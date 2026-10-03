@@ -375,7 +375,8 @@ customerForm.addEventListener('submit',async e=>{
 syncCustomerIdTypes();
   function renderCenters(){return;}
   function activeCenterInfo(){return centers.find(center=>center[0]===activeCenter)||centers[0]}
-  function rateNumber(v){return Number(v||0).toLocaleString('id-ID',{minimumFractionDigits:0,maximumFractionDigits:4})}
+  function currencyFlagForCode(code,stored){if(stored)return stored;const map={USD:'🇺🇸',EUR:'🇪🇺',GBP:'🇬🇧',JPY:'🇯🇵',SGD:'🇸🇬',MYR:'🇲🇾',THB:'🇹🇭',CNY:'🇨🇳',HKD:'🇭🇰',AUD:'🇦🇺',NZD:'🇳🇿',CAD:'🇨🇦',CHF:'🇨🇭',KRW:'🇰🇷',IDR:'🇮🇩',INR:'🇮🇳',AED:'🇦🇪',SAR:'🇸🇦',QAR:'🇶🇦',TWD:'🇹🇼',VND:'🇻🇳',PHP:'🇵🇭',BRL:'🇧🇷',ZAR:'🇿🇦',RUB:'🇷🇺',TRY:'🇹🇷',SEK:'🇸🇪',NOK:'🇳🇴',DKK:'🇩🇰',PLN:'🇵🇱'};return map[String(code||'').toUpperCase()]||'🌐'}
+function rateNumber(v){return Number(v||0).toLocaleString('id-ID',{minimumFractionDigits:0,maximumFractionDigits:4})}
 function rateDate(v){if(!v)return '—';const d=new Date(v);return isNaN(d.getTime())?String(v):d.toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'})}
 function renderCurrencyRates(items,query=''){
   const filter=String(query||'').toLowerCase();
@@ -383,7 +384,7 @@ function renderCurrencyRates(items,query=''){
   const head=['Kode','Valuta / Negara','Pecahan','Reference','Beli','Jual','Spread Beli','Spread Jual','Sumber','Update','Status','Aksi'];
   document.getElementById('workHead').innerHTML='<tr>'+head.map(x=>'<th>'+x+'</th>').join('')+'</tr>';
   document.getElementById('workRows').innerHTML=filtered.length?filtered.map(item=>`<tr>
-    <td class="currency"><span class="currency-table-flag">${item.flag||'🌐'}</span><b>${item.code||'—'}</b></td>
+    <td class="currency"><span class="currency-table-flag">${currencyFlagForCode(item.code,item.flag)}</span><b>${item.code||'—'}</b></td>
     <td><b>${item.name||'—'}</b><br><span class="caption">${item.country||'—'}</span></td>
     <td><span class="caption">${item.denominations||'—'}</span></td>
     <td class="rate">${rateNumber(item.reference)}</td>
