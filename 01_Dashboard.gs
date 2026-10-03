@@ -1,7 +1,13 @@
 function getDashboard(){
-  const customers=rowsAsObjects_(getSS_().getSheetByName('10_customers'));
-  const transactions=rowsAsObjects_(getSS_().getSheetByName('41_transactions'));
-  const banks=rowsAsObjects_(getSS_().getSheetByName('62_bank_accounts'));
-  return {ok:true,cards:{customers:customers.length,transactions:transactions.length,bank_balance:banks.reduce((s,r)=>s+(Number(r.balance)||0),0)},recent_transactions:transactions.slice(-10).reverse()};
+  const customers=getCustomers({}).data||[];
+  const transactions=getTransactions({}).data||[];
+  const audit=rowsAsObjects_(getSS_().getSheetByName('140_audit_logs')).slice(-100).reverse();
+  return {ok:true,customers,transactions:transactions.map(t=>({
+    id:t.trx_no||t.id,customer:t.customer_id||'',type:t.status||'',items:[],
+    payment:'—',total:Number(t.grand_total||0),status:String(t.status||'draft').toLowerCase(),createdAt:t.created_at
+  })),audit};
 }
-function bootstrap(){return {ok:true,app:APP_CONFIG,db:installDatabase(),dashboard:getDashboard()};}
+function bootstrap(){
+  installDatabase();
+  return {ok:true,app:APP_CONFIG,db:installDatabase(),dashboard:getDashboard()};
+}
