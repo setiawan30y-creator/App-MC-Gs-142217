@@ -145,8 +145,10 @@
 <div><label>Jenis ID</label><select name="id_type" id="customerIdType"></select></div>
 <div class="wide"><label id="identityNumberLabel">No. KTP / NIK</label><input name="identity_number" id="customerIdentityNumber" placeholder="Masukkan NIK"></div>
 <div class="wide id-help" id="identityHelp">Perorangan + KTP → nomor disimpan ke No_KTP. Jika SIM/PASPORT → disimpan ke No_selain_KTP.</div>
-<div class="customer-form-section">Dokumen</div>
-<div class="wide"><label>URL / Referensi Gambar ID</label><input name="id_image_url" placeholder="Opsional — upload akan dihubungkan ke Document Center"></div>
+<div class="customer-form-section">Dokumen & OCR</div>
+<div class="wide"><label>Foto / Scan Identitas</label><input type="file" id="customerIdentityFile" accept="image/*,.pdf" name="identity_file"><div class="id-help">File akan disimpan ke Google Drive setelah nasabah dibuat.</div></div>
+<div><label>OCR</label><button type="button" class="mini-btn" id="runCustomerOcr">▣ OCR & Isi Otomatis</button></div>
+<div class="wide"><label>URL / Referensi Gambar ID</label><input name="id_image_url" placeholder="Opsional — URL eksternal bila ada"></div>
 </div></div>
 <div class="customer-form-foot"><button type="button" class="btn" id="cancelCustomer">Batal</button><button type="submit" class="btn primary" id="saveCustomerForm">Simpan Nasabah</button></div>
 </form></div><div class="toast" id="toast"></div>
@@ -287,7 +289,7 @@
   function renderHistory(transactions,audit,search=''){const query=search.toLowerCase();const list=transactions.filter(t=>(t.id+' '+t.customer).toLowerCase().includes(query));document.getElementById('historyRows').innerHTML=list.length?list.map(t=>`<tr><td>${new Date(t.createdAt).toLocaleString('id-ID',{hour:'2-digit',minute:'2-digit'})}</td><td class="currency">${t.id}</td><td><b>${t.customer}</b></td><td>${t.type}</td><td>${t.items.map(i=>i.currency).join(', ')}</td><td>${t.payment}</td><td>${rupiah(t.total)}</td><td>${badge(t.status)}</td></tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:#69736f">Belum ada transaksi tersimpan.</td></tr>';document.getElementById('historyCount').textContent=transactions.length;document.getElementById('holdCount').textContent=transactions.filter(t=>t.status==='hold').length;document.getElementById('historyTotal').textContent=rupiah(transactions.reduce((sum,t)=>sum+Number(t.total||0),0));document.getElementById('auditCount').textContent=audit.length}
   async function loadHistory(){try{const data=await getDashboardData();const transactions=data.transactions||[];const audit=data.audit||[];renderHistory(transactions,audit);document.getElementById('historySearch').oninput=e=>renderHistory(transactions,audit,e.target.value)}catch(error){showToast(error.message,true)}}
   document.getElementById('refreshHistory').addEventListener('click',loadHistory);
-  const customerModal=document.getElementById('customerModal'),customerForm=document.getElementById('customerForm'),customerIdType=document.getElementById('customerIdType'),customerIdentityNumber=document.getElementById('customerIdentityNumber'),identityNumberLabel=document.getElementById('identityNumberLabel'),identityHelp=document.getElementById('identityHelp');
+  const customerModal=document.getElementById('customerModal'),customerForm=document.getElementById('customerForm'),customerIdType=document.getElementById('customerIdType'),customerIdentityNumber=document.getElementById('customerIdentityNumber'),identityNumberLabel=document.getElementById('identityNumberLabel'),identityHelp=document.getElementById('identityHelp'),customerIdentityFile=document.getElementById('customerIdentityFile');
 function syncCustomerIdTypes(){
   const type=document.querySelector('input[name="customer_type"]:checked')?.value||'perorangan';
   const options=type==='corporate'?[['certificate','Sertifikat'],['izin_usaha','No Izin Usaha'],['bi','BI']]:[['ktp','KTP'],['sim','SIM'],['pasport','PASPORT']];
@@ -302,6 +304,30 @@ function syncIdentityField(){
   identityHelp.textContent=isKtp?'Perorangan + KTP → nomor disimpan ke No_KTP.':'Nomor identitas disimpan ke No_selain_KTP (other_id).';
 }
 document.getElementById('addCustomer').addEventListener('click',()=>{customerForm.reset();document.querySelector('input[name="customer_type"][value="perorangan"]').checked=true;syncCustomerIdTypes();customerModal.classList.add('open');customerForm.elements.name.focus()});
+function fileToDataUrl_(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=reject;reader.readAsDataURL(file)})}
+document.getElementById('runCustomerOcr').addEventListener('click',async()=>{
+  const file=customerIdentityFile.files&&customerIdentityFile.files[0];
+  if(!file){showToast('Pilih foto/scan identitas terlebih dahulu.',true);return}
+  const idType=customerIdType.value, button=document.getElementById('runCustomerOcr');
+  button.disabled=true;button.textContent='Memproses OCR…';
+  try{
+    const imageBase64=await fileToDataUrl_(file);
+    const response=await gsFetch('api.php?resource=ocr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_base64:imageBase64,id_type:idType})});
+    const payload=await response.json();if(!response.ok)throw new Error(payload.error||'OCR gagal');
+    const f=payload.fields||{};
+    if(f.identity_number)customerIdentityNumber.value=f.identity_number;
+    if(f.npwp&&customerForm.elements.npwp)customerForm.elements.npwp.value=f.npwp;
+    if(f.birth_place&&customerForm.elements.birth_place)customerForm.elements.birth_place.value=f.birth_place;
+    if(f.birth_date_raw)identityHelp.textContent='OCR menemukan tanggal lahir: '+f.birth_date_raw+' — periksa sebelum menyimpan.';
+    const text=String(payload.text||'').replace(/\\s+/g,' ').trim();
+    if(text&&customerForm.elements.name&&!customerForm.elements.name.value){
+      const nameLine=text.split(/(?:NAMA|NAME)[:\\s]+/i)[1];
+      if(nameLine)customerForm.elements.name.value=nameLine.split(/(?:TEMPAT|NIK|NATIONALITY|WARGA)/i)[0].trim();
+    }
+    showToast('✓ OCR selesai. Periksa hasil sebelum menyimpan.');
+  }catch(error){showToast(error.message,true)}
+  finally{button.disabled=false;button.textContent='▣ OCR & Isi Otomatis'}
+});
 document.getElementById('closeCustomerModal').addEventListener('click',()=>customerModal.classList.remove('open'));
 document.getElementById('cancelCustomer').addEventListener('click',()=>customerModal.classList.remove('open'));
 document.querySelectorAll('input[name="customer_type"]').forEach(x=>x.addEventListener('change',syncCustomerIdTypes));
@@ -310,8 +336,10 @@ customerModal.addEventListener('click',e=>{if(e.target===customerModal)customerM
 customerForm.addEventListener('submit',async e=>{
   e.preventDefault();const f=new FormData(customerForm),type=f.get('customer_type'),idType=f.get('id_type'),identity=String(f.get('identity_number')||'').trim();
   if(!identity){showToast('Nomor identitas wajib diisi.',true);customerIdentityNumber.focus();return}
-  const data=Object.fromEntries(f.entries());delete data.identity_number;
+  const data=Object.fromEntries(f.entries());delete data.identity_number;delete data.identity_file;
   data.customer_type=type;data.id_type=idType;
+  const file=customerIdentityFile.files&&customerIdentityFile.files[0];
+  if(file){data.id_image_base64=await fileToDataUrl_(file);data.id_image_name=file.name;data.id_image_mime=file.type||'application/octet-stream';}
   if(type==='perorangan'&&idType==='ktp'){data.ktp_no=identity;data.other_id=''}else{data.ktp_no='';data.other_id=identity}
   const button=document.getElementById('saveCustomerForm');button.disabled=true;button.textContent='Menyimpan…';
   try{const response=await gsFetch('api.php?resource=customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Gagal menambah nasabah');customerModal.classList.remove('open');showToast('✓ '+payload.customer.name+' ditambahkan, KYC menunggu verifikasi');loadCustomers()}catch(error){showToast(error.message,true)}finally{button.disabled=false;button.textContent='Simpan Nasabah'}
