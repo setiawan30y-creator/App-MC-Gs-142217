@@ -206,7 +206,7 @@
     expenses:{columns:['No. Biaya','Jenis Pengeluaran','Kategori / Nominal','Status','Dibuat','Aksi'],fields:['Jenis atau nama pengeluaran','Kategori dan nominal biaya'],caption:'Kelola biaya operasional, approval, dan pembukuan pengeluaran.'},
     adjustments:{columns:['No. Penyesuaian','Objek Penyesuaian','Alasan / Nilai','Status','Dibuat','Aksi'],fields:['Kas, stok, atau akun yang disesuaikan','Alasan dan nilai penyesuaian'],caption:'Koreksi kas, stok, dan saldo dengan alasan serta jejak audit.'},
     closings:{columns:['No. Closing','Teller / Cabang','Periode / Selisih','Status','Dibuat','Aksi'],fields:['Nama teller atau cabang','Tanggal closing dan nilai selisih'],caption:'Rekonsiliasi kas, valuta, selisih, dan persetujuan closing harian.'},
-    currencies:{columns:['Kode Valuta','Nama Valuta','Kurs / Batas Stok','Status','Dibuat','Aksi'],fields:['Kode dan nama mata uang','Kurs beli/jual serta batas stok'],caption:'Atur kurs, pecahan, batas stok minimum, dan status valuta.'},
+    currencies:{columns:['Kode','Valuta / Negara','Pecahan','Reference','Beli','Jual','Spread','Sumber','Update','Status','Aksi'],fields:['Kode dan nama mata uang','Kurs referensi, beli/jual, spread, sumber, dan status'],caption:'Master kurs sesuai blueprint: reference rate → spread → kurs beli/jual → source → publish/lock. Pecahan valuta ditampilkan sebagai bagian dari currency master.'},
     old_money:{columns:['Kode Koleksi','Nama Item','Seri / Nilai Estimasi','Status','Dibuat','Aksi'],fields:['Nama uang/objek koleksi','Seri, kondisi, dan nilai estimasi'],caption:'Kelola katalog old money, kondisi item, nilai, dan dokumentasi.'},
     hris:{columns:['ID Pegawai','Pegawai / Aktivitas','Shift / Kehadiran','Status','Dibuat','Aksi'],fields:['Nama pegawai atau aktivitas HRIS','Shift, kehadiran, cuti, atau kebutuhan HR'],caption:'Kelola jadwal, kehadiran, cuti, kasbon, BPJS, dan dokumen pegawai.'},
     messages:{columns:['ID Pesan','Penerima / Topik','Kanal / Isi Ringkas','Status','Dibuat','Aksi'],fields:['Penerima atau topik pesan','Kanal dan isi ringkas pesan'],caption:'Kelola chat internal serta antrean notifikasi WhatsApp.'},
@@ -347,7 +347,34 @@ customerForm.addEventListener('submit',async e=>{
 syncCustomerIdTypes();
   function renderCenters(){document.getElementById('centerGrid').innerHTML=centers.map(c=>`<article class="module-card ${activeCenter===c[0]?'selected':''}" data-center="${c[0]}" style="cursor:pointer"><div class="module-icon">${c[3]}</div><h3>${c[1]}</h3><p>${c[2]}</p><footer>BUKA WORKSPACE →</footer></article>`).join('');document.querySelectorAll('[data-center]').forEach(card=>card.addEventListener('click',()=>{activeCenter=card.dataset.center;renderCenters();loadWork()}))}
   function activeCenterInfo(){return centers.find(center=>center[0]===activeCenter)||centers[0]}
-  function renderWork(items,query=''){const spec=workSpecs[activeCenter];const filter=query.toLowerCase();const filtered=items.filter(item=>(item.title+' '+item.detail+' '+item.status).toLowerCase().includes(filter));document.getElementById('workHead').innerHTML='<tr>'+spec.columns.map(column=>'<th>'+column+'</th>').join('')+'</tr>';document.getElementById('workRows').innerHTML=filtered.length?filtered.map(item=>`<tr><td class="currency">${item.id}</td><td><b>${item.title}</b></td><td>${item.detail||'—'}</td><td>${badge(item.status)}</td><td>${new Date(item.createdAt).toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'})}</td><td><button class="btn">Detail</button></td></tr>`).join(''):'<tr><td colspan="6" style="text-align:center;color:#69736f">Belum ada data. Gunakan tombol “Tambah Data”.</td></tr>';document.getElementById('workCount').textContent=items.length;document.getElementById('workActive').textContent=items.filter(item=>item.status==='aktif').length;document.getElementById('workUpdate').textContent=items.length?new Date(items[0].createdAt).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}):'—'}
+  function rateNumber(v){return Number(v||0).toLocaleString('id-ID',{minimumFractionDigits:0,maximumFractionDigits:4})}
+function rateDate(v){if(!v)return '—';const d=new Date(v);return isNaN(d.getTime())?String(v):d.toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'})}
+function renderCurrencyRates(items,query=''){
+  const filter=String(query||'').toLowerCase();
+  const filtered=items.filter(item=>([item.code,item.name,item.country,item.denominations,item.source,item.status].join(' ')).toLowerCase().includes(filter));
+  const head=['Kode','Valuta / Negara','Pecahan','Reference','Beli','Jual','Spread','Sumber','Update','Status','Aksi'];
+  document.getElementById('workHead').innerHTML='<tr>'+head.map(x=>'<th>'+x+'</th>').join('')+'</tr>';
+  document.getElementById('workRows').innerHTML=filtered.length?filtered.map(item=>`<tr>
+    <td class="currency"><b>${item.code||'—'}</b></td>
+    <td><b>${item.name||'—'}</b><br><span class="caption">${item.country||'—'}</span></td>
+    <td><span class="caption">${item.denominations||'—'}</span></td>
+    <td class="rate">${rateNumber(item.reference)}</td>
+    <td class="rate">${rateNumber(item.buy)}</td>
+    <td class="rate">${rateNumber(item.sell)}</td>
+    <td class="rate">${rateNumber(item.spread)}</td>
+    <td>${item.source||'Manual'}</td>
+    <td>${rateDate(item.effective_at)}</td>
+    <td>${badge(item.status)}</td>
+    <td><button class="btn">Detail</button></td>
+  </tr>`).join(''):'<tr><td colspan="11" style="text-align:center;color:#69736f">Belum ada master valuta/kurs.</td></tr>';
+  document.getElementById('workCount').textContent=items.length;
+  document.getElementById('workActive').textContent=items.filter(item=>String(item.status).toLowerCase()==='aktif').length;
+  const latest=items.map(x=>x.effective_at).filter(Boolean).sort().pop();
+  document.getElementById('workUpdate').textContent=latest?rateDate(latest):'—';
+}
+function renderWork(items,query=''){
+  if(activeCenter==='currencies'){renderCurrencyRates(items,query);return}
+  const spec=workSpecs[activeCenter];const filter=query.toLowerCase();const filtered=items.filter(item=>(item.title+' '+item.detail+' '+item.status).toLowerCase().includes(filter));document.getElementById('workHead').innerHTML='<tr>'+spec.columns.map(column=>'<th>'+column+'</th>').join('')+'</tr>';document.getElementById('workRows').innerHTML=filtered.length?filtered.map(item=>`<tr><td class="currency">${item.id}</td><td><b>${item.title}</b></td><td>${item.detail||'—'}</td><td>${badge(item.status)}</td><td>${rateDate(item.createdAt)}</td><td><button class="btn">Detail</button></td></tr>`).join(''):'<tr><td colspan="6" style="text-align:center;color:#69736f">Belum ada data. Gunakan tombol “Tambah Data”.</td></tr>';document.getElementById('workCount').textContent=items.length;document.getElementById('workActive').textContent=items.filter(item=>item.status==='aktif').length;document.getElementById('workUpdate').textContent=items.length?rateDate(items[0].createdAt):'—'}
   async function loadWork(){const center=activeCenterInfo();const spec=workSpecs[center[0]];document.getElementById('workTitle').textContent=center[1];document.getElementById('workSubtitle').textContent=center[2];document.getElementById('workTableTitle').textContent='Ledger · '+center[1];document.getElementById('workCaption').textContent=spec.caption;document.getElementById('workSearch').placeholder='Cari '+center[1].toLowerCase()+'…';try{const response=await gsFetch('api.php?resource=collection:'+encodeURIComponent(center[0]),{cache:'no-store'});const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Data tidak dapat dimuat');const items=payload.items||[];renderWork(items);document.getElementById('workSearch').oninput=e=>renderWork(items,e.target.value)}catch(error){showToast(error.message,true)}}
   document.getElementById('refreshWork').addEventListener('click',loadWork);
   document.getElementById('backToCenters').addEventListener('click',()=>{activeCenter='bookings';renderCenters();loadWork()});
