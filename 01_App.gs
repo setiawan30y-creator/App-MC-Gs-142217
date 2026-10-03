@@ -10,7 +10,8 @@ function include(filename) {
 function ping() {
   return { ok: true, app: APP_CONFIG.APP_NAME, version: APP_CONFIG.VERSION, ts: new Date().toISOString() };
 }
-function apiGet(resource, payload) {\n  try { ensureCustomerSchema_(); } catch(e) {}
+function apiGet(resource, payload) {
+  try { ensureCustomerSchema_(); } catch(e) {}
   payload = payload || {};
   const handlers = {
     dashboard: getDashboard,
