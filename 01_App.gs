@@ -16,6 +16,8 @@ function apiGet(resource, payload) {\n  try { ensureCustomerSchema_(); } catch(e
     dashboard: getDashboard,
     customers: getCustomers,
     transactions: getTransactions,
+    customerKyc: getCustomerKyc,
+    customer360: getCustomer360,
     bootstrap: bootstrap
   };
   if (String(resource).indexOf('collection:')===0) return getCollectionWork(String(resource).slice(11));
@@ -26,7 +28,8 @@ function apiPost(resource, payload) {
   payload = payload || {};
   const handlers = {
     customers: saveCustomer,
-    transactions: saveTransaction
+    transactions: saveTransaction,
+    customerKyc: saveCustomerKyc
   };
   if (String(resource).indexOf('collection:')===0) return saveCollectionWork(String(resource).slice(11),payload);
   if (!handlers[resource]) throw new Error('POST resource tidak dikenal: ' + resource);
