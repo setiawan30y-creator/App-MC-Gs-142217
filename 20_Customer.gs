@@ -1,4 +1,4 @@
-function customerHeaders_(){return ['id','tenant_id','branch_id','customer_code','customer_type','id_pjk','name','birth_place','birth_date','address','nationality','gender','occupation','phone','account_no','id_type','ktp_no','other_id','cif','npwp','local_id','registered_at','id_image_url','created_at','updated_at'];}
+function customerHeaders_(){return ['id','tenant_id','branch_id','customer_code','id_pjk','name','birth_place','birth_date','address','nationality','gender','occupation','phone','account_no','id_type','ktp_no','other_id','cif','npwp','local_id','registered_at','id_image_url','created_at','updated_at','customer_type'];}
 function ensureCustomerSchema_(){
   const sh=getSS_().getSheetByName('10_customers');
   const want=customerHeaders_(), current=sh.getRange(1,1,1,Math.max(sh.getLastColumn(),1)).getValues()[0].map(String);
