@@ -33,6 +33,30 @@ function saveCustomer(p){
   const dup=rowsAsObjects_(sh).find(r=>(obj.ktp_no && String(r.ktp_no)===String(obj.ktp_no)) || (obj.phone && String(r.phone)===String(obj.phone) && obj.name.toLowerCase()===String(r.name).toLowerCase()));
   if(dup) throw new Error('Nasabah terindikasi duplikat: '+dup.customer_code);
   appendObject_('10_customers',obj);
+  let document=null;
+  if(p.id_image_base64){
+    document=saveCustomerIdentityDocument_(id,p);
+    obj.id_image_url=document.file_url||obj.id_image_url;
+    const sh2=getSS_().getSheetByName('10_customers');
+    const headers=sh2.getRange(1,1,1,sh2.getLastColumn()).getValues()[0].map(String);
+    const rowIndex=sh2.getLastRow();
+    sh2.getRange(rowIndex,1,1,headers.length).setValues([headers.map(h=>h==='id_image_url'?(obj.id_image_url||''):obj[h]||'')]);
+  }
   audit_('CREATE','CUSTOMER',id,null,obj);
-  return {ok:true,customer:customerView_(obj)};
+  return {ok:true,customer:customerView_(obj),document:document};
+}
+
+function saveCustomerIdentityDocument_(customerId,p){
+  const data=String(p.id_image_base64||'').replace(/^data:[^;]+;base64,/,'');
+  const mime=String(p.id_image_mime||'application/octet-stream');
+  const name=String(p.id_image_name||('identity-'+customerId+'.bin')).replace(/[\\/:*?"<>|]+/g,'_');
+  const bytes=Utilities.base64Decode(data);
+  const blob=Utilities.newBlob(bytes,mime,name);
+  const folders=DriveApp.getFoldersByName('MC-Almara Documents');
+  const folder=folders.hasNext()?folders.next():DriveApp.createFolder('MC-Almara Documents');
+  const file=folder.createFile(blob);
+  const doc={id:uuid_(),tenant_id:APP_CONFIG.DEFAULT_TENANT_ID,customer_id:customerId,type:'identity',file_id:file.getId(),file_url:file.getUrl(),status:'active',created_at:iso_()};
+  appendObject_('11_customer_documents',doc);
+  audit_('CREATE','CUSTOMER_DOCUMENT',doc.id,null,doc);
+  return doc;
 }
