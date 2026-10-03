@@ -35,7 +35,9 @@
     .c360-empty{padding:16px;text-align:center;color:var(--muted);font-size:9px}.c360-mini-table{width:100%;border-collapse:collapse;font-size:9px}.c360-mini-table th{font:700 7px Manrope;text-transform:uppercase;color:var(--muted);text-align:left;background:#f1f4ef;padding:6px;border-bottom:1px solid var(--line)}.c360-mini-table td{padding:6px;border-bottom:1px solid #edf0eb}.c360-mini-table tr:last-child td{border-bottom:0}.c360-doc{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dotted var(--line)}.c360-doc:last-child{border:0}.c360-doc-icon{width:25px;height:25px;border-radius:4px;background:#e5f2eb;color:var(--jade);display:grid;place-items:center;font-weight:800}.c360-timeline{border-left:2px solid #dce8e1;padding-left:11px}.c360-event{position:relative;padding:0 0 9px}.c360-event:before{content:'';position:absolute;left:-17px;top:2px;width:6px;height:6px;border-radius:50%;background:var(--jade);border:2px solid #fff}.c360-event b{font-size:9px}.c360-event span{display:block;font-size:8px;color:var(--muted);margin-top:2px}
     .c360-tabs{display:flex;gap:0;border-bottom:1px solid var(--line);padding:0 11px}.c360-tab{padding:8px 10px;font:700 8px Manrope;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}.c360-tab.active{color:var(--jade);border-color:var(--jade)}
     @media(max-width:900px){.c360-grid{grid-template-columns:1fr}.c360-card.full{grid-column:auto}.c360-fields{grid-template-columns:1fr 1fr}}@media(max-width:600px){.c360-hero{display:block}.c360-actions{justify-content:flex-start;margin-top:10px}.c360-fields{grid-template-columns:1fr}.c360-kpi{grid-template-columns:1fr 1fr}}
-  </style></head>
+  </style><style id="customerFormStyles">
+.customer-modal{position:fixed;inset:0;background:rgba(8,35,29,.48);display:none;align-items:center;justify-content:center;z-index:30;padding:18px}.customer-modal.open{display:flex}.customer-form{background:#fff;width:min(820px,100%);max-height:92vh;overflow:auto;border-radius:8px;border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.2)}.customer-form-head{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.customer-form-head h2{font:700 20px 'Playfair Display';margin:0;color:var(--deep)}.customer-form-head p{margin:3px 0 0;color:var(--muted);font-size:9px}.customer-form-body{padding:16px}.customer-type{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}.customer-type label{border:1px solid var(--line);border-radius:6px;padding:11px;cursor:pointer;background:#fafbf8}.customer-type input{accent-color:var(--jade);margin-right:7px}.customer-type label:has(input:checked){border-color:var(--jade);background:#edf7f1;box-shadow:0 0 0 1px var(--jade)}.customer-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.customer-form-grid .wide{grid-column:span 2}.customer-form-section{font:700 8px Manrope;letter-spacing:1px;color:var(--jade);text-transform:uppercase;border-bottom:1px solid var(--line);padding-bottom:5px;margin:14px 0 9px;grid-column:1/-1}.customer-form-grid label{display:block;font-size:8px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}.customer-form-grid input,.customer-form-grid select{width:100%;padding:7px 8px;border:1px solid #cdd2cb;border-radius:4px;font:10px Manrope;background:#fff}.customer-form-grid input:focus,.customer-form-grid select:focus{outline:none;border-color:var(--jade);box-shadow:0 0 0 2px #dff1e880}.id-help{font-size:8px;color:var(--muted);margin-top:4px}.customer-form-foot{padding:11px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:7px}@media(max-width:700px){.customer-form-grid{grid-template-columns:1fr 1fr}.customer-form-grid .wide{grid-column:span 2}}@media(max-width:480px){.customer-form-grid{grid-template-columns:1fr}.customer-form-grid .wide{grid-column:auto}.customer-type{grid-template-columns:1fr}}
+</style></head>
 <body>
 <div class="app">
   <aside class="sidebar">
@@ -115,7 +117,39 @@
     <div class="page" id="page-modules"><section class="headline"><div><h1 id="moduleTitle">Pusat Modul Operasional</h1><p id="moduleSubtitle">Seluruh domain yang dirancang pada blueprint tersedia dalam satu arsitektur workspace.</p></div><div class="actions"><button class="btn">⌕ Cari Modul</button><button class="btn primary">+ Konfigurasi Modul</button></div></section><section class="module-hero"><div><h2>Money Changer Digital OS</h2><p>Platform multi-tenant yang menyatukan operasional front office, back office, compliance, dan manajemen dalam satu alur data yang dapat diaudit.</p></div><div class="module-count">18<small>DOMAIN MODUL</small></div></section><section class="module-grid" id="moduleGrid"></section></div>
   </main>
 </div>
-<div class="toast" id="toast"></div>
+<div class="customer-modal" id="customerModal">
+<form class="customer-form" id="customerForm">
+<div class="customer-form-head"><div><h2>Tambah Nasabah</h2><p>Customer Master · data identitas dan KYC awal</p></div><button type="button" class="btn" id="closeCustomerModal">×</button></div>
+<div class="customer-form-body">
+<div class="field"><label>Jenis Nasabah</label></div>
+<div class="customer-type">
+<label><input type="radio" name="customer_type" value="perorangan" checked> <b>Perorangan</b><span class="caption"> Nasabah individu</span></label>
+<label><input type="radio" name="customer_type" value="corporate"> <b>Corporate</b><span class="caption"> Badan usaha / perusahaan</span></label>
+</div>
+<div class="customer-form-grid">
+<div class="customer-form-section">Identitas Nasabah</div>
+<div><label>Nama</label><input name="name" required placeholder="Nama lengkap / nama perusahaan"></div>
+<div><label>IDPJK</label><input name="id_pjk"></div>
+<div><label>No. CIF</label><input name="cif"></div>
+<div><label>Tempat Lahir</label><input name="birth_place"></div>
+<div><label>Tanggal Lahir</label><input type="date" name="birth_date"></div>
+<div><label>Jenis Kelamin</label><select name="gender"><option value="">Pilih</option><option>Laki-laki</option><option>Perempuan</option></select></div>
+<div><label>Kewarganegaraan</label><input name="nationality" value="Indonesia"></div>
+<div><label>Pekerjaan / Bidang Usaha</label><input name="occupation"></div>
+<div><label>No. HP</label><input name="phone"></div>
+<div><label>No. Rekening</label><input name="account_no"></div>
+<div><label>NPWP</label><input name="npwp"></div>
+<div><label>Local ID</label><input name="local_id"></div>
+<div class="wide"><label>Alamat</label><input name="address"></div>
+<div class="customer-form-section">Identitas Legal</div>
+<div><label>Jenis ID</label><select name="id_type" id="customerIdType"></select></div>
+<div class="wide"><label id="identityNumberLabel">No. KTP / NIK</label><input name="identity_number" id="customerIdentityNumber" placeholder="Masukkan NIK"></div>
+<div class="wide id-help" id="identityHelp">Perorangan + KTP → nomor disimpan ke No_KTP. Jika SIM/PASPORT → disimpan ke No_selain_KTP.</div>
+<div class="customer-form-section">Dokumen</div>
+<div class="wide"><label>URL / Referensi Gambar ID</label><input name="id_image_url" placeholder="Opsional — upload akan dihubungkan ke Document Center"></div>
+</div></div>
+<div class="customer-form-foot"><button type="button" class="btn" id="cancelCustomer">Batal</button><button type="submit" class="btn primary" id="saveCustomerForm">Simpan Nasabah</button></div>
+</form></div><div class="toast" id="toast"></div>
 <script>
   async function gsFetch(url, options={}) {
     const match=String(url).match(/[?&]resource=([^&]+)/);
@@ -253,7 +287,36 @@
   function renderHistory(transactions,audit,search=''){const query=search.toLowerCase();const list=transactions.filter(t=>(t.id+' '+t.customer).toLowerCase().includes(query));document.getElementById('historyRows').innerHTML=list.length?list.map(t=>`<tr><td>${new Date(t.createdAt).toLocaleString('id-ID',{hour:'2-digit',minute:'2-digit'})}</td><td class="currency">${t.id}</td><td><b>${t.customer}</b></td><td>${t.type}</td><td>${t.items.map(i=>i.currency).join(', ')}</td><td>${t.payment}</td><td>${rupiah(t.total)}</td><td>${badge(t.status)}</td></tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:#69736f">Belum ada transaksi tersimpan.</td></tr>';document.getElementById('historyCount').textContent=transactions.length;document.getElementById('holdCount').textContent=transactions.filter(t=>t.status==='hold').length;document.getElementById('historyTotal').textContent=rupiah(transactions.reduce((sum,t)=>sum+Number(t.total||0),0));document.getElementById('auditCount').textContent=audit.length}
   async function loadHistory(){try{const data=await getDashboardData();const transactions=data.transactions||[];const audit=data.audit||[];renderHistory(transactions,audit);document.getElementById('historySearch').oninput=e=>renderHistory(transactions,audit,e.target.value)}catch(error){showToast(error.message,true)}}
   document.getElementById('refreshHistory').addEventListener('click',loadHistory);
-  document.getElementById('addCustomer').addEventListener('click',async()=>{const name=window.prompt('Nama lengkap nasabah:');if(!name||!name.trim())return;const identity=window.prompt('Nomor identitas (opsional):')||'Belum diverifikasi';try{const response=await gsFetch('api.php?resource=customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name.trim(),ktp_no:identity.trim()})});const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Gagal menambah nasabah');showToast('✓ '+payload.customer.name+' ditambahkan, menunggu KYC');loadCustomers()}catch(error){showToast(error.message,true)}});
+  const customerModal=document.getElementById('customerModal'),customerForm=document.getElementById('customerForm'),customerIdType=document.getElementById('customerIdType'),customerIdentityNumber=document.getElementById('customerIdentityNumber'),identityNumberLabel=document.getElementById('identityNumberLabel'),identityHelp=document.getElementById('identityHelp');
+function syncCustomerIdTypes(){
+  const type=document.querySelector('input[name="customer_type"]:checked')?.value||'perorangan';
+  const options=type==='corporate'?[['certificate','Sertifikat'],['izin_usaha','No Izin Usaha'],['bi','BI']]:[['ktp','KTP'],['sim','SIM'],['pasport','PASPORT']];
+  customerIdType.innerHTML=options.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('');
+  syncIdentityField();
+}
+function syncIdentityField(){
+  const type=document.querySelector('input[name="customer_type"]:checked')?.value||'perorangan', id=customerIdType.value;
+  const isKtp=type==='perorangan'&&id==='ktp';
+  identityNumberLabel.textContent=isKtp?'No. KTP / NIK':'No. Selain KTP';
+  customerIdentityNumber.placeholder=isKtp?'Masukkan NIK':'Masukkan nomor '+(customerIdType.options[customerIdType.selectedIndex]?.text||'identitas');
+  identityHelp.textContent=isKtp?'Perorangan + KTP → nomor disimpan ke No_KTP.':'Nomor identitas disimpan ke No_selain_KTP (other_id).';
+}
+document.getElementById('addCustomer').addEventListener('click',()=>{customerForm.reset();document.querySelector('input[name="customer_type"][value="perorangan"]').checked=true;syncCustomerIdTypes();customerModal.classList.add('open');customerForm.elements.name.focus()});
+document.getElementById('closeCustomerModal').addEventListener('click',()=>customerModal.classList.remove('open'));
+document.getElementById('cancelCustomer').addEventListener('click',()=>customerModal.classList.remove('open'));
+document.querySelectorAll('input[name="customer_type"]').forEach(x=>x.addEventListener('change',syncCustomerIdTypes));
+customerIdType.addEventListener('change',syncIdentityField);
+customerModal.addEventListener('click',e=>{if(e.target===customerModal)customerModal.classList.remove('open')});
+customerForm.addEventListener('submit',async e=>{
+  e.preventDefault();const f=new FormData(customerForm),type=f.get('customer_type'),idType=f.get('id_type'),identity=String(f.get('identity_number')||'').trim();
+  if(!identity){showToast('Nomor identitas wajib diisi.',true);customerIdentityNumber.focus();return}
+  const data=Object.fromEntries(f.entries());delete data.identity_number;
+  data.customer_type=type;data.id_type=idType;
+  if(type==='perorangan'&&idType==='ktp'){data.ktp_no=identity;data.other_id=''}else{data.ktp_no='';data.other_id=identity}
+  const button=document.getElementById('saveCustomerForm');button.disabled=true;button.textContent='Menyimpan…';
+  try{const response=await gsFetch('api.php?resource=customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Gagal menambah nasabah');customerModal.classList.remove('open');showToast('✓ '+payload.customer.name+' ditambahkan, KYC menunggu verifikasi');loadCustomers()}catch(error){showToast(error.message,true)}finally{button.disabled=false;button.textContent='Simpan Nasabah'}
+});
+syncCustomerIdTypes();
   function renderCenters(){document.getElementById('centerGrid').innerHTML=centers.map(c=>`<article class="module-card ${activeCenter===c[0]?'selected':''}" data-center="${c[0]}" style="cursor:pointer"><div class="module-icon">${c[3]}</div><h3>${c[1]}</h3><p>${c[2]}</p><footer>BUKA WORKSPACE →</footer></article>`).join('');document.querySelectorAll('[data-center]').forEach(card=>card.addEventListener('click',()=>{activeCenter=card.dataset.center;renderCenters();loadWork()}))}
   function activeCenterInfo(){return centers.find(center=>center[0]===activeCenter)||centers[0]}
   function renderWork(items,query=''){const spec=workSpecs[activeCenter];const filter=query.toLowerCase();const filtered=items.filter(item=>(item.title+' '+item.detail+' '+item.status).toLowerCase().includes(filter));document.getElementById('workHead').innerHTML='<tr>'+spec.columns.map(column=>'<th>'+column+'</th>').join('')+'</tr>';document.getElementById('workRows').innerHTML=filtered.length?filtered.map(item=>`<tr><td class="currency">${item.id}</td><td><b>${item.title}</b></td><td>${item.detail||'—'}</td><td>${badge(item.status)}</td><td>${new Date(item.createdAt).toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'})}</td><td><button class="btn">Detail</button></td></tr>`).join(''):'<tr><td colspan="6" style="text-align:center;color:#69736f">Belum ada data. Gunakan tombol “Tambah Data”.</td></tr>';document.getElementById('workCount').textContent=items.length;document.getElementById('workActive').textContent=items.filter(item=>item.status==='aktif').length;document.getElementById('workUpdate').textContent=items.length?new Date(items[0].createdAt).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}):'—'}
