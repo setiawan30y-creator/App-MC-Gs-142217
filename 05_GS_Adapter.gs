@@ -9,12 +9,12 @@ function scalarWorkValue_(v){
 }
 function smartDealUrl_(url){return String(url||['https://','www.','smartdeal.co.id/'].join('')).trim()||['https://','www.','smartdeal.co.id/'].join('');}
 function parseSmartDeal_(html){
-  const text=String(html||'').replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim();
-  const stamp=(text.match(/(?:Last Update Rates|Kurs diperbarui)\s*:?\s*(\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s+\d{2}:\d{2}:\d{2})/i)||[])[1]||'';
-  const items={};const re=/([A-Z]{3})\s+\|\s+([^|]*)\s+\|\s+([0-9.,-]+)\s+\|\s+([0-9.,-]+)/g;let m;
-  const num=s=>{s=String(s||'').replace(/\s/g,'');if(s.indexOf(',')>=0){const p=s.split(','),d=p.pop();s=p.join('').replace(/\./g,'')+'.'+d}else{s=s.replace(/\./g,'')}const n=Number(s);return isFinite(n)?n:null};
-  while((m=re.exec(text))){const buy=num(m[3]),sell=num(m[4]);if(buy!==null&&sell!==null)items[m[1]]={code:m[1],denomination:m[2].trim(),buy,sell};}
-  if(!Object.keys(items).length)throw new Error('Format kurs sumber tidak ditemukan.');
+  const source=String(html||''),clean=source.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<br\s*\/?\s*>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim();
+  const stamp=(clean.match(/(?:Last Update Rates|Kurs diperbarui)\s*:?\s*(\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s+\d{2}:\d{2}:\d{2})/i)||[])[1]||'';
+  const items={};const rowRe=/<tr[\s\S]*?>([\s\S]*?)<\/tr>/gi;let row;
+  const num=s=>{let v=String(s||'').replace(/\s/g,'').replace(/[^0-9,.-]/g,'');if(!v||v==='-')return null;if(v.indexOf(',')>=0){const p=v.split(','),d=p.pop();v=p.join('').replace(/\./g,'')+'.'+d}else if(v.indexOf('.')>=0){v=v.replace(/\./g,'')}const n=Number(v);return isFinite(n)?n:null};
+  while((row=rowRe.exec(source))){const cells=[],cellRe=/<td[\s\S]*?>([\s\S]*?)<\/td>/gi;let cell;while((cell=cellRe.exec(row[1])))cells.push(String(cell[1]).replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim());if(cells.length<3)continue;const joined=cells.join(' '),cm=joined.match(/\b([A-Z]{3})\b/);if(!cm)continue;const nums=[];cells.forEach(x=>(String(x).match(/-?\d[\d.,]*/g)||[]).forEach(v=>{const n=num(v);if(n!==null)nums.push(n)}));if(nums.length<2)continue;const buy=nums[nums.length-2],sell=nums[nums.length-1];if(buy<0||sell<0)continue;items[cm[1]]={code:cm[1],denomination:cells[1]||'',buy,sell};}
+  if(!Object.keys(items).length)throw new Error('Format kurs sumber tidak ditemukan atau struktur halaman berubah.');
   return {items,source_updated_at:stamp};
 }
 function fetchSmartDeal_(url){
