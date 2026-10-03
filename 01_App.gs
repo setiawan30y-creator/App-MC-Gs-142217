@@ -38,7 +38,8 @@ function apiPost(resource, payload) {
     ocr: processOcr,
     opening: saveDailyOpening,
     closing: closeDailySession,
-    currencyMaster: saveCurrencyMaster
+    currencyMaster: saveCurrencyMaster,
+    rateSourcePreview: getCurrencyRateSourcePreview_
   };
   if (String(resource).indexOf('collection:')===0) return saveCollectionWork(String(resource).slice(11),payload);
   if (!handlers[resource]) throw new Error('POST resource tidak dikenal: ' + resource);
