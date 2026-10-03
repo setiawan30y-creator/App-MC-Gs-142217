@@ -8,10 +8,12 @@ function ensureCustomerSchema_(){
 function getCustomers(payload){
   ensureCustomerSchema_();
   const rows=rowsAsObjects_(getSS_().getSheetByName('10_customers'));
-  return {ok:true,data:rows.map(customerView_)};
+  const kycRows=rowsAsObjects_(getSS_().getSheetByName('12_customer_kyc'));
+  const kycMap={}; kycRows.forEach(k=>kycMap[String(k.customer_id)]=k);
+  return {ok:true,data:rows.map(r=>customerView_(r,kycMap[String(r.id)]||null))};
 }
-function customerView_(r){
-  return {id:r.id,customer_code:r.customer_code,id_pjk:r.id_pjk,name:r.name,birth_place:r.birth_place,birth_date:r.birth_date,address:r.address,nationality:r.nationality,gender:r.gender,occupation:r.occupation,phone:r.phone,account_no:r.account_no,id_type:r.id_type,ktp_no:r.ktp_no,other_id:r.other_id,cif:r.cif,npwp:r.npwp,local_id:r.local_id,registered_at:r.registered_at,id_image_url:r.id_image_url,kyc:'review',risk:'low',tenant_id:r.tenant_id,branch_id:r.branch_id};
+function customerView_(r,k){
+  return {id:r.id,customer_code:r.customer_code,id_pjk:r.id_pjk,name:r.name,birth_place:r.birth_place,birth_date:r.birth_date,address:r.address,nationality:r.nationality,gender:r.gender,occupation:r.occupation,phone:r.phone,account_no:r.account_no,id_type:r.id_type,ktp_no:r.ktp_no,other_id:r.other_id,cif:r.cif,npwp:r.npwp,local_id:r.local_id,registered_at:r.registered_at,id_image_url:r.id_image_url,kyc:String(k&&k.status||'review').toLowerCase(),risk:String(k&&k.risk_level||'low').toLowerCase(),kyc_verified_at:k&&k.verified_at||'',kyc_verified_by:k&&k.verified_by||'',kyc_notes:k&&k.notes||'',tenant_id:r.tenant_id,branch_id:r.branch_id};
 }
 function saveCustomer(p){
   ensureCustomerSchema_();
