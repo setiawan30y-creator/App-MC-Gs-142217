@@ -24,7 +24,7 @@ function postTransaction_(trx, items, payments, p){
     const session=getActiveOpening_(trx.branch_id,trx.created_at);
     if(!session) throw new Error('Sesi harian belum dibuka atau sudah ditutup. Buka Saldo Awal terlebih dahulu.');
 
-    const normalizedPayments=normalizePayments_(payments,p);
+    const normalizedPayments=normalizePayments_(payments,p,items);
     const total=Number(trx.grand_total||0);
     const paidTotal=normalizedPayments.reduce((s,x)=>s+x.amount,0);
     if(Math.abs(paidTotal-total)>0.005) throw new Error('Total payment tidak sama dengan grand total transaksi.');
@@ -52,18 +52,16 @@ function postTransaction_(trx, items, payments, p){
     normalizedPayments.forEach(pay=>{
       if(pay.method==='CASH'){
         const acc=resolveCashAccount_(pay.account_id,pay.currency||'IDR');
-        appendObject_('61_cash_movements',{
-          id:uuid_(),cash_account_id:acc.id,movement_type:'IN',
-          amount:pay.amount,reference_type:'TRANSACTION',reference_id:trx.id,created_at:iso_()
-        });
-        cashIn.push(pay.amount);
+        const direction=pay.direction==='OUT'?'OUT':'IN';
+        appendObject_('61_cash_movements',{id:uuid_(),cash_account_id:acc.id,movement_type:direction,amount:pay.amount,reference_type:'TRANSACTION',reference_id:trx.id,created_at:iso_()});
+        adjustAccountBalance_('60_cash_accounts',acc.id,direction==='OUT'?-pay.amount:pay.amount);
+        (direction==='OUT'?cashOut:cashIn).push(pay.amount);
       }else if(pay.method==='TRANSFER'){
         const acc=resolveBankAccount_(pay.account_id);
-        appendObject_('63_bank_movements',{
-          id:uuid_(),bank_account_id:acc.id,movement_type:'IN',
-          amount:pay.amount,reference_type:'TRANSACTION',reference_id:trx.id,created_at:iso_()
-        });
-        bankIn.push(pay.amount);
+        const direction=pay.direction==='OUT'?'OUT':'IN';
+        appendObject_('63_bank_movements',{id:uuid_(),bank_account_id:acc.id,movement_type:direction,amount:pay.amount,reference_type:'TRANSACTION',reference_id:trx.id,created_at:iso_()});
+        adjustAccountBalance_('62_bank_accounts',acc.id,direction==='OUT'?-pay.amount:pay.amount);
+        (direction==='OUT'?bankOut:bankIn).push(pay.amount);
       }
     });
 
@@ -88,7 +86,7 @@ function postTransaction_(trx, items, payments, p){
   }
 }
 
-function normalizePayments_(payments,p){
+function normalizePayments_(payments,p,items){
   let src=Array.isArray(payments)?payments:[];
   if(!src.length && p.payment){
     const raw=String(p.payment).toUpperCase();
@@ -96,6 +94,7 @@ function normalizePayments_(payments,p){
   }
   return src.map(x=>{
     const method=String(x.method||'CASH').toUpperCase();
+    const inferredDirection=(items||[]).length&&items.every(i=>String(i.side||'').toUpperCase()==='BUY')?'OUT':'IN';
     if(['CASH','TRANSFER'].indexOf(method)<0) throw new Error('Metode payment tidak didukung: '+method);
     return {
       method,
@@ -103,7 +102,7 @@ function normalizePayments_(payments,p){
       account_id:x.account_id||'',
       currency:String(x.currency||'IDR').toUpperCase(),
       reference:x.reference||'',
-      proof_url:x.proof_url||''
+      proof_url:x.proof_url||'', direction:String(x.direction||p.payment_direction||inferredDirection).toUpperCase()
     };
   }).filter(x=>x.amount>0);
 }
@@ -197,30 +196,38 @@ function updateStockQty_(stock,delta){
 }
 
 function postJournal_(trx,payments,stockEffects,settlementId){
-  const total=Number(trx.grand_total||0);
   const journalId=uuid_(), journalNo=sequence_('JRN','JRN');
-  const stockIn=stockEffects.filter(x=>x.movement==='IN').reduce((s,x)=>s+Number(x.amount||0),0);
-  const stockOut=stockEffects.filter(x=>x.movement==='OUT').reduce((s,x)=>s+Number(x.amount||0),0);
-  const payCash=payments.filter(x=>x.method==='CASH').reduce((s,x)=>s+x.amount,0);
-  const payBank=payments.filter(x=>x.method==='TRANSFER').reduce((s,x)=>s+x.amount,0);
-
   const cashAcc=getOrCreateCoa_('1100','Kas');
   const bankAcc=getOrCreateCoa_('1110','Bank');
   const stockAcc=getOrCreateCoa_('1200','Stok Valuta Asing');
-  const contraAcc=getOrCreateCoa_('4100','Pendapatan/Beban Transaksi Valas');
-
+  const resultAcc=getOrCreateCoa_('4100','Pendapatan/Beban Transaksi Valas');
   const lines=[];
-  if(payCash) lines.push({account_id:cashAcc.id,debit:payCash,credit:0,description:'Settlement cash'});
-  if(payBank) lines.push({account_id:bankAcc.id,debit:payBank,credit:0,description:'Settlement transfer'});
-  if(stockIn) lines.push({account_id:stockAcc.id,debit:stockIn,credit:0,description:'FX stock received'});
-  if(stockOut) lines.push({account_id:stockAcc.id,debit:0,credit:stockOut,description:'FX stock issued'});
+  payments.forEach(pay=>{
+    const acc=pay.method==='TRANSFER'?bankAcc:cashAcc;
+    if(pay.direction==='OUT') lines.push({account_id:acc.id,debit:0,credit:pay.amount,description:'Settlement payment OUT'});
+    else lines.push({account_id:acc.id,debit:pay.amount,credit:0,description:'Settlement payment IN'});
+  });
+  stockEffects.forEach(e=>{
+    if(e.movement==='IN') lines.push({account_id:stockAcc.id,debit:e.amount,credit:0,description:'FX stock received'});
+    else lines.push({account_id:stockAcc.id,debit:0,credit:e.amount,description:'FX stock issued'});
+  });
   const debit=lines.reduce((s,x)=>s+x.debit,0), credit=lines.reduce((s,x)=>s+x.credit,0);
   if(Math.abs(debit-credit)>0.005){
-    lines.push({account_id:contraAcc.id,debit:Math.max(0,credit-debit),credit:Math.max(0,debit-credit),description:'Settlement balancing / FX result'});
+    lines.push({account_id:resultAcc.id,debit:Math.max(0,credit-debit),credit:Math.max(0,debit-credit),description:'FX settlement result'});
   }
   appendObject_('81_journals',{id:journalId,tenant_id:APP_CONFIG.DEFAULT_TENANT_ID,branch_id:trx.branch_id||APP_CONFIG.DEFAULT_BRANCH_ID,journal_no:journalNo,date:String(trx.created_at||iso_()).slice(0,10),reference_type:'TRANSACTION',reference_id:trx.id,memo:'Settlement '+settlementId,status:'POSTED'});
   lines.forEach(line=>appendObject_('82_journal_items',{id:uuid_(),journal_id:journalId,account_id:line.account_id,debit:line.debit,credit:line.credit,description:line.description}));
   return {id:journalId,journal_no:journalNo,total_debit:lines.reduce((s,x)=>s+x.debit,0),total_credit:lines.reduce((s,x)=>s+x.credit,0)};
+}
+
+function adjustAccountBalance_(sheetName,id,delta){
+  const sh=getSS_().getSheetByName(sheetName);
+  const data=sh.getDataRange().getValues(), h=data[0];
+  const idCol=h.indexOf('id'), balCol=h.indexOf('balance');
+  if(idCol<0||balCol<0)return;
+  const idx=data.findIndex((r,i)=>i>0&&String(r[idCol])===String(id));
+  if(idx<1)throw new Error('Akun tidak ditemukan: '+id);
+  sh.getRange(idx+1,balCol+1).setValue(Number(data[idx][balCol]||0)+Number(delta||0));
 }
 
 function getOrCreateCoa_(code,name){
