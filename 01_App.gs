@@ -18,6 +18,7 @@ function apiGet(resource, payload) {
     transactions: getTransactions,
     bootstrap: bootstrap
   };
+  if (String(resource).indexOf('collection:')===0) return getCollectionWork(String(resource).slice(11));
   if (!handlers[resource]) throw new Error('Resource tidak dikenal: ' + resource);
   return handlers[resource](payload);
 }
