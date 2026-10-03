@@ -22,5 +22,6 @@ function getCustomer360(p){
   const trx=rowsAsObjects_(getSS_().getSheetByName('41_transactions')).filter(x=>String(x.customer_id)===id).slice(-100).reverse();
   const usage=rowsAsObjects_(getSS_().getSheetByName('91_threshold_usage')).filter(x=>String(x.customer_id)===id).slice(-12).reverse();
   const cases=rowsAsObjects_(getSS_().getSheetByName('92_compliance_cases')).filter(x=>String(x.customer_id)===id).slice(-50).reverse();
-  return {ok:true,data:{customer,kyc,documents:docs,transactions:trx,threshold_usage:usage,compliance_cases:cases}};
+  const audit=rowsAsObjects_(getSS_().getSheetByName('140_audit_logs')).filter(x=>String(x.entity_id)===id || String(x.record_id)===id).slice(-100).reverse();
+  return {ok:true,data:{customer,kyc,documents:docs,transactions:trx,threshold_usage:usage,compliance_cases:cases,audit}};
 }
