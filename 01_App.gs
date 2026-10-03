@@ -19,6 +19,7 @@ function apiGet(resource, payload) {
     transactions: getTransactions,
     customerKyc: getCustomerKyc,
     customer360: getCustomer360,
+    ocrStatus: getOcrStatus,
     bootstrap: bootstrap
   };
   if (String(resource).indexOf('collection:')===0) return getCollectionWork(String(resource).slice(11));
@@ -30,7 +31,8 @@ function apiPost(resource, payload) {
   const handlers = {
     customers: saveCustomer,
     transactions: saveTransaction,
-    customerKyc: saveCustomerKyc
+    customerKyc: saveCustomerKyc,
+    ocr: processOcr
   };
   if (String(resource).indexOf('collection:')===0) return saveCollectionWork(String(resource).slice(11),payload);
   if (!handlers[resource]) throw new Error('POST resource tidak dikenal: ' + resource);
