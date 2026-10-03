@@ -28,6 +28,8 @@ const SHEETS = [
   ['62_bank_accounts',['id','tenant_id','branch_id','bank_name','account_no','account_name','balance','status']],
   ['63_bank_movements',['id','bank_account_id','movement_type','amount','reference_type','reference_id','created_at']],
   ['64_vault',['id','tenant_id','branch_id','currency','balance','status']],
+  ['65_openings',['id','tenant_id','branch_id','date','shift_id','status','opened_by','opened_at','closed_at','notes']],
+  ['66_opening_balances',['id','opening_id','account_type','account_id','currency','denomination','qty','amount','notes']],
   ['70_closings',['id','tenant_id','branch_id','date','status','expected_cash','physical_cash','difference','approved_by','created_at']],
   ['71_reconciliations',['id','closing_id','type','expected','actual','difference','status','notes']],
   ['72_gantungan',['id','tenant_id','branch_id','date','description','amount','status','returned_at','created_by']],
