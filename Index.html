@@ -206,7 +206,7 @@
     expenses:{columns:['No. Biaya','Jenis Pengeluaran','Kategori / Nominal','Status','Dibuat','Aksi'],fields:['Jenis atau nama pengeluaran','Kategori dan nominal biaya'],caption:'Kelola biaya operasional, approval, dan pembukuan pengeluaran.'},
     adjustments:{columns:['No. Penyesuaian','Objek Penyesuaian','Alasan / Nilai','Status','Dibuat','Aksi'],fields:['Kas, stok, atau akun yang disesuaikan','Alasan dan nilai penyesuaian'],caption:'Koreksi kas, stok, dan saldo dengan alasan serta jejak audit.'},
     closings:{columns:['No. Closing','Teller / Cabang','Periode / Selisih','Status','Dibuat','Aksi'],fields:['Nama teller atau cabang','Tanggal closing dan nilai selisih'],caption:'Rekonsiliasi kas, valuta, selisih, dan persetujuan closing harian.'},
-    currencies:{columns:['Kode','Valuta / Negara','Pecahan','Reference','Beli','Jual','Spread','Sumber','Update','Status','Aksi'],fields:['Kode dan nama mata uang','Kurs referensi, beli/jual, spread, sumber, dan status'],caption:'Master kurs sesuai blueprint: reference rate → spread → kurs beli/jual → source → publish/lock. Pecahan valuta ditampilkan sebagai bagian dari currency master.'},
+    currencies:{columns:['Kode','Valuta / Negara','Pecahan','Reference','Beli','Jual','Spread Beli','Spread Jual','Sumber','Update','Status','Aksi'],fields:['Kode dan nama mata uang','Kurs referensi, spread beli/jual, kurs final, sumber, dan status'],caption:'Master kurs sesuai blueprint: reference rate → spread beli/jual → kurs internal → source → approval/publish → rate lock. Pecahan valuta menjadi bagian dari currency master.'},
     old_money:{columns:['Kode Koleksi','Nama Item','Seri / Nilai Estimasi','Status','Dibuat','Aksi'],fields:['Nama uang/objek koleksi','Seri, kondisi, dan nilai estimasi'],caption:'Kelola katalog old money, kondisi item, nilai, dan dokumentasi.'},
     hris:{columns:['ID Pegawai','Pegawai / Aktivitas','Shift / Kehadiran','Status','Dibuat','Aksi'],fields:['Nama pegawai atau aktivitas HRIS','Shift, kehadiran, cuti, atau kebutuhan HR'],caption:'Kelola jadwal, kehadiran, cuti, kasbon, BPJS, dan dokumen pegawai.'},
     messages:{columns:['ID Pesan','Penerima / Topik','Kanal / Isi Ringkas','Status','Dibuat','Aksi'],fields:['Penerima atau topik pesan','Kanal dan isi ringkas pesan'],caption:'Kelola chat internal serta antrean notifikasi WhatsApp.'},
@@ -352,7 +352,7 @@ function rateDate(v){if(!v)return '—';const d=new Date(v);return isNaN(d.getTi
 function renderCurrencyRates(items,query=''){
   const filter=String(query||'').toLowerCase();
   const filtered=items.filter(item=>([item.code,item.name,item.country,item.denominations,item.source,item.status].join(' ')).toLowerCase().includes(filter));
-  const head=['Kode','Valuta / Negara','Pecahan','Reference','Beli','Jual','Spread','Sumber','Update','Status','Aksi'];
+  const head=['Kode','Valuta / Negara','Pecahan','Reference','Beli','Jual','Spread Beli','Spread Jual','Sumber','Update','Status','Aksi'];
   document.getElementById('workHead').innerHTML='<tr>'+head.map(x=>'<th>'+x+'</th>').join('')+'</tr>';
   document.getElementById('workRows').innerHTML=filtered.length?filtered.map(item=>`<tr>
     <td class="currency"><b>${item.code||'—'}</b></td>
@@ -361,12 +361,13 @@ function renderCurrencyRates(items,query=''){
     <td class="rate">${rateNumber(item.reference)}</td>
     <td class="rate">${rateNumber(item.buy)}</td>
     <td class="rate">${rateNumber(item.sell)}</td>
-    <td class="rate">${rateNumber(item.spread)}</td>
+    <td class="rate">${rateNumber(item.buy_spread)}</td>
+    <td class="rate">${rateNumber(item.sell_spread)}</td>
     <td>${item.source||'Manual'}</td>
     <td>${rateDate(item.effective_at)}</td>
     <td>${badge(item.status)}</td>
     <td><button class="btn">Detail</button></td>
-  </tr>`).join(''):'<tr><td colspan="11" style="text-align:center;color:#69736f">Belum ada master valuta/kurs.</td></tr>';
+  </tr>`).join(''):'<tr><td colspan="12" style="text-align:center;color:#69736f">Belum ada master valuta/kurs.</td></tr>';
   document.getElementById('workCount').textContent=items.length;
   document.getElementById('workActive').textContent=items.filter(item=>String(item.status).toLowerCase()==='aktif').length;
   const latest=items.map(x=>x.effective_at).filter(Boolean).sort().pop();
