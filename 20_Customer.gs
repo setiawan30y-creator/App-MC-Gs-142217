@@ -12,8 +12,13 @@ function getCustomers(payload){
   const kycMap={}; kycRows.forEach(k=>kycMap[String(k.customer_id)]=k);
   return {ok:true,data:rows.map(r=>customerView_(r,kycMap[String(r.id)]||null))};
 }
+function customerValue_(v){
+  if(v instanceof Date) return v.toISOString();
+  if(v===null||v===undefined) return '';
+  return v;
+}
 function customerView_(r,k){
-  return {id:r.id,customer_code:r.customer_code,customer_type:r.customer_type||'perorangan',id_pjk:r.id_pjk,name:r.name,birth_place:r.birth_place,birth_date:r.birth_date,address:r.address,nationality:r.nationality,gender:r.gender,occupation:r.occupation,phone:r.phone,account_no:r.account_no,id_type:r.id_type,ktp_no:r.ktp_no,other_id:r.other_id,no_selain_ktp:r.other_id,cif:r.cif,npwp:r.npwp,local_id:r.local_id,registered_at:r.registered_at,id_image_url:r.id_image_url,kyc:String(k&&k.status||'review').toLowerCase(),risk:String(k&&k.risk_level||'low').toLowerCase(),kyc_verified_at:k&&k.verified_at||'',kyc_verified_by:k&&k.verified_by||'',kyc_notes:k&&k.notes||'',tenant_id:r.tenant_id,branch_id:r.branch_id};
+  return {id:String(r.id||''),customer_code:String(r.customer_code||''),customer_type:String(r.customer_type||'perorangan'),id_pjk:customerValue_(r.id_pjk),name:String(r.name||''),birth_place:customerValue_(r.birth_place),birth_date:customerValue_(r.birth_date),address:customerValue_(r.address),nationality:customerValue_(r.nationality),gender:customerValue_(r.gender),occupation:customerValue_(r.occupation),phone:customerValue_(r.phone),account_no:customerValue_(r.account_no),id_type:customerValue_(r.id_type),ktp_no:customerValue_(r.ktp_no),other_id:customerValue_(r.other_id),no_selain_ktp:customerValue_(r.other_id),cif:customerValue_(r.cif),npwp:customerValue_(r.npwp),local_id:customerValue_(r.local_id),registered_at:customerValue_(r.registered_at),id_image_url:customerValue_(r.id_image_url),kyc:String(k&&k.status||'review').toLowerCase(),risk:String(k&&k.risk_level||'low').toLowerCase(),kyc_verified_at:customerValue_(k&&k.verified_at),kyc_verified_by:customerValue_(k&&k.verified_by),kyc_notes:customerValue_(k&&k.notes),tenant_id:customerValue_(r.tenant_id),branch_id:customerValue_(r.branch_id)};
 }
 function saveCustomer(p){
   ensureCustomerSchema_();
