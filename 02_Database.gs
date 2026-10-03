@@ -8,10 +8,10 @@ const SHEETS = [
   ['10_customers',['id','tenant_id','branch_id','customer_code','id_pjk','name','birth_place','birth_date','address','nationality','gender','occupation','phone','account_no','id_type','ktp_no','other_id','cif','npwp','local_id','registered_at','id_image_url','created_at','updated_at','customer_type']],
   ['11_customer_documents',['id','tenant_id','customer_id','type','file_id','file_url','status','created_at']],
   ['12_customer_kyc',['id','tenant_id','customer_id','status','risk_level','verified_at','verified_by','notes']],
-  ['20_currencies',['id','code','name','country','status']],
+  ['20_currencies',['id','code','numeric_code','name','country','country_code','flag','status']],
   ['21_denominations',['id','currency_id','value','type','status']],
   ['30_rate_sources',['id','name','type','endpoint','status']],
-  ['31_rates',['id','currency_id','buy','sell','source_id','effective_at']],
+  ['31_rates',['id','currency_id','reference_rate','buy','sell','buy_spread','sell_spread','source_id','status','approved_by','approved_at','published_at','effective_at']],
   ['32_rate_snapshots',['id','transaction_id','currency_id','buy','sell','locked_at']],
   ['40_transaction_carts',['id','tenant_id','branch_id','cart_no','customer_id','status','grand_total','created_at','updated_at']],
   ['41_transactions',['id','tenant_id','branch_id','trx_no','cart_id','customer_id','status','grand_total','currency_total','created_at','updated_at']],
@@ -68,6 +68,10 @@ function ensureSheet_(name, headers) {
   let sh=ss.getSheetByName(name);
   if (!sh) sh=ss.insertSheet(name);
   if (sh.getLastRow()===0) sh.getRange(1,1,1,headers.length).setValues([headers]);
+  else {
+    const existing=sh.getRange(1,1,1,Math.max(sh.getLastColumn(),1)).getValues()[0].map(String);
+    headers.forEach(h=>{if(existing.indexOf(h)<0){sh.getRange(1,sh.getLastColumn()+1).setValue(h);existing.push(h)}});
+  }
   return sh;
 }
 function installDatabase() {
