@@ -5,7 +5,7 @@ const SHEETS = [
   ['03_users',['id','tenant_id','branch_id','name','email','role_id','status','created_at']],
   ['04_roles',['id','tenant_id','code','name','status']],
   ['05_permissions',['id','role_id','permission','status']],
-  ['10_customers',['id','tenant_id','branch_id','customer_code','name','birth_place','birth_date','address','nationality','gender','occupation','phone','account_no','id_type','ktp_no','other_id','cif','npwp','local_id','registered_at','id_image_url','created_at','updated_at']],
+  ['10_customers',['id','tenant_id','branch_id','customer_code','id_pjk','name','birth_place','birth_date','address','nationality','gender','occupation','phone','account_no','id_type','ktp_no','other_id','cif','npwp','local_id','registered_at','id_image_url','created_at','updated_at']],
   ['11_customer_documents',['id','tenant_id','customer_id','type','file_id','file_url','status','created_at']],
   ['12_customer_kyc',['id','tenant_id','customer_id','status','risk_level','verified_at','verified_by','notes']],
   ['20_currencies',['id','code','name','country','status']],
