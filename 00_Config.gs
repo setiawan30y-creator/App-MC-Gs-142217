@@ -1,0 +1,9 @@
+const APP_CONFIG = Object.freeze({
+  APP_NAME: 'MC Almara Digital OS',
+  VERSION: '1.0.0-gs',
+  TIMEZONE: 'Asia/Jakarta',
+  SPREADSHEET_ID: '',
+  ROOT_FOLDER_ID: '',
+  DEFAULT_TENANT_ID: 'TENANT-DEFAULT',
+  DEFAULT_BRANCH_ID: 'BRANCH-DEFAULT'
+});
