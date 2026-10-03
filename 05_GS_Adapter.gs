@@ -17,13 +17,25 @@ function parseSmartDeal_(html){
   if(!Object.keys(items).length)throw new Error('Format kurs sumber tidak ditemukan atau struktur halaman berubah.');
   return {items,source_updated_at:stamp};
 }
+function smartDealCacheKey_(url){
+  return 'MC_SD_'+Utilities.base64EncodeWebSafe(String(url||'')).slice(0,70);
+}
 function fetchSmartDeal_(url){
-  const endpoint=smartDealUrl_(url),cache=CacheService.getScriptCache(),key='MC_SD_'+Utilities.base64EncodeWebSafe(endpoint).slice(0,70),cached=cache.get(key);
+  const endpoint=smartDealUrl_(url),cache=CacheService.getScriptCache(),key=smartDealCacheKey_(endpoint),cached=cache.get(key);
   if(cached){try{return JSON.parse(cached)}catch(e){}}
   const res=UrlFetchApp.fetch(endpoint,{muteHttpExceptions:true,followRedirects:true});
   if(res.getResponseCode()<200||res.getResponseCode()>=300)throw new Error('HTTP '+res.getResponseCode());
   const p=parseSmartDeal_(res.getContentText()),out={ok:true,url:endpoint,fetched_at:new Date().toISOString(),source_updated_at:p.source_updated_at,items:p.items};
-  cache.put(key,JSON.stringify(out),8);return out;
+  const json=JSON.stringify(out);
+  cache.put(key,json,8);
+  try{PropertiesService.getScriptProperties().setProperty(key,json)}catch(e){}
+  return out;
+}
+function getLastSmartDealOnline_(url){
+  try{
+    const raw=PropertiesService.getScriptProperties().getProperty(smartDealCacheKey_(smartDealUrl_(url)));
+    return raw?JSON.parse(raw):null;
+  }catch(e){return null}
 }
 function updateRowById_(sheetName,id,patch){
   const sh=getSS_().getSheetByName(sheetName);if(!sh)return;const v=sh.getDataRange().getValues();if(v.length<2)return;const h=v[0].map(String),idc=h.indexOf('id');if(idc<0)return;
@@ -36,7 +48,15 @@ function refreshSmartDealRates_(){
 }
 function getCurrencyRateSourcePreview_(p){
   p=p||{};const code=String(p.code||'').toUpperCase(),url=smartDealUrl_(p.url);if(!code)throw new Error('Pilih kode valuta.');
-  try{const d=fetchSmartDeal_(url),x=d.items[code];if(!x)throw new Error('Kode '+code+' tidak ditemukan pada sumber.');return {ok:true,code,buy:x.buy,sell:x.sell,denomination:x.denomination,source_updated_at:d.source_updated_at,fetched_at:d.fetched_at,status:'online'};}catch(e){return {ok:false,code,status:'offline',error:String(e&&e.message||e)};}
+  try{
+    const d=fetchSmartDeal_(url),x=d.items[code];
+    if(!x)throw new Error('Kode '+code+' tidak ditemukan pada sumber.');
+    return {ok:true,code,buy:x.buy,sell:x.sell,denomination:x.denomination,source_updated_at:d.source_updated_at,fetched_at:d.fetched_at,status:'online',last_online_at:d.fetched_at};
+  }catch(e){
+    const last=getLastSmartDealOnline_(url),x=last&&last.items?last.items[code]:null;
+    if(x)return {ok:true,code,buy:x.buy,sell:x.sell,denomination:x.denomination,source_updated_at:last.source_updated_at||'',fetched_at:new Date().toISOString(),last_online_at:last.fetched_at||'',status:'offline',fallback:true,error:String(e&&e.message||e)};
+    return {ok:false,code,status:'offline',fallback:false,error:String(e&&e.message||e)};
+  }
 }
 function getCurrencyRateWork_(){
   try{refreshSmartDealRates_()}catch(e){}
@@ -61,7 +81,7 @@ function saveCurrencyMaster(p){
   const denoms=String(p.denominations||'').split(',').map(x=>Number(String(x).trim())).filter(x=>isFinite(x)&&x>0);if(denoms.length){const dsh=getSS_().getSheetByName('21_denominations'),dh=dsh.getRange(1,1,1,dsh.getLastColumn()).getValues()[0];denoms.forEach(v=>{const o={id:uuid_(),currency_id:id,value:v,type:'NOTE',status:'aktif'};dsh.appendRow(dh.map(h=>Object.prototype.hasOwnProperty.call(o,h)?o[h]:''));});}
   const url=String(p.source_url||'').trim(),sourceId=url?('SRC-SOURCE-'+Utilities.base64EncodeWebSafe(url).slice(0,24)):'SRC-MANUAL';
   if(url){const sh=getSS_().getSheetByName('30_rate_sources'),src=getCollection_('30_rate_sources');if(!src.some(r=>String(r.id)===sourceId)){const h=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0],o={id:sourceId,name:'Website Reference',type:'WEBSITE',endpoint:url,status:'aktif',refresh_interval:10,last_success_at:'',last_fetch_at:'',last_error:'',source_updated_at:''};sh.appendRow(h.map(x=>Object.prototype.hasOwnProperty.call(o,x)?o[x]:''));}}
-  const source=url?(()=>{try{return fetchSmartDeal_(url)}catch(e){return {ok:false,error:String(e&&e.message||e)}}})():null,x=source&&source.items?source.items[code]:null,rb=x?x.buy:Number(p.reference_buy||0),rs=x?x.sell:Number(p.reference_sell||0),bs=Number(p.buy_spread||0),ss=Number(p.sell_spread||0),buy=rb+bs,sell=rs+ss;
+  const source=url?(()=>{try{return fetchSmartDeal_(url)}catch(e){const last=getLastSmartDealOnline_(url);return last?{ok:false,fallback:true,items:last.items,source_updated_at:last.source_updated_at,last_online_at:last.fetched_at,error:String(e&&e.message||e)}:{ok:false,error:String(e&&e.message||e)}}})():null,x=source&&source.items?source.items[code]:null,rb=x?x.buy:Number(p.reference_buy||0),rs=x?x.sell:Number(p.reference_sell||0),bs=Number(p.buy_spread||0),ss=Number(p.sell_spread||0),buy=rb+bs,sell=rs+ss;
   const rate={id:uuid_(),currency_id:id,reference_rate:(rb+rs)/2,reference_buy:rb,reference_sell:rs,buy,sell,buy_spread:bs,sell_spread:ss,source_id:sourceId,source_status:source&&source.ok?'online':(url?'offline':'manual'),source_updated_at:source&&source.source_updated_at||'',last_fetch_at:source&&source.fetched_at||now,source_denomination:x&&x.denomination||'',status:'published',approved_by:'SYSTEM',approved_at:now,published_at:now,effective_at:p.effective_at?new Date(p.effective_at):new Date()};
   const rsh=getSS_().getSheetByName('31_rates'),rh=rsh.getRange(1,1,1,rsh.getLastColumn()).getValues()[0];rsh.appendRow(rh.map(h=>Object.prototype.hasOwnProperty.call(rate,h)?rate[h]:''));audit_('CREATE','CURRENCY',id,null,{currency,rate});return {ok:true,currency,rate};
 }
