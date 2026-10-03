@@ -13,12 +13,20 @@ function getCustomers(payload){
   return {ok:true,data:rows.map(r=>customerView_(r,kycMap[String(r.id)]||null))};
 }
 function customerView_(r,k){
-  return {id:r.id,customer_code:r.customer_code,customer_type:r.customer_type||'perorangan',id_pjk:r.id_pjk,name:r.name,birth_place:r.birth_place,birth_date:r.birth_date,address:r.address,nationality:r.nationality,gender:r.gender,occupation:r.occupation,phone:r.phone,account_no:r.account_no,id_type:r.id_type,ktp_no:r.ktp_no,other_id:r.other_id,cif:r.cif,npwp:r.npwp,local_id:r.local_id,registered_at:r.registered_at,id_image_url:r.id_image_url,kyc:String(k&&k.status||'review').toLowerCase(),risk:String(k&&k.risk_level||'low').toLowerCase(),kyc_verified_at:k&&k.verified_at||'',kyc_verified_by:k&&k.verified_by||'',kyc_notes:k&&k.notes||'',tenant_id:r.tenant_id,branch_id:r.branch_id};
+  return {id:r.id,customer_code:r.customer_code,customer_type:r.customer_type||'perorangan',id_pjk:r.id_pjk,name:r.name,birth_place:r.birth_place,birth_date:r.birth_date,address:r.address,nationality:r.nationality,gender:r.gender,occupation:r.occupation,phone:r.phone,account_no:r.account_no,id_type:r.id_type,ktp_no:r.ktp_no,other_id:r.other_id,no_selain_ktp:r.other_id,cif:r.cif,npwp:r.npwp,local_id:r.local_id,registered_at:r.registered_at,id_image_url:r.id_image_url,kyc:String(k&&k.status||'review').toLowerCase(),risk:String(k&&k.risk_level||'low').toLowerCase(),kyc_verified_at:k&&k.verified_at||'',kyc_verified_by:k&&k.verified_by||'',kyc_notes:k&&k.notes||'',tenant_id:r.tenant_id,branch_id:r.branch_id};
 }
 function saveCustomer(p){
   ensureCustomerSchema_();
   p=p||{};
   if(!String(p.name||'').trim()) throw new Error('Nama nasabah wajib diisi');
+  const customerType=String(p.customer_type||'perorangan').toLowerCase();
+  const idType=String(p.id_type||'').toLowerCase();
+  const individualIds=['ktp','sim','pasport'];
+  const corporateIds=['certificate','izin_usaha','bi'];
+  if(customerType!=='perorangan'&&customerType!=='corporate') throw new Error('Jenis nasabah tidak valid');
+  if(!(customerType==='perorangan'?individualIds:corporateIds).includes(idType)) throw new Error('Jenis ID tidak sesuai dengan jenis nasabah');
+  const identity=String(p.identity_number||'').trim();
+  if(identity){if(customerType==='perorangan'&&idType==='ktp'){p.ktp_no=identity;p.other_id='';}else{p.ktp_no='';p.other_id=identity;}}
   const sh=getSS_().getSheetByName('10_customers');
   const code=sequence_('CUS','CUS'), now=iso_(), id=uuid_();
   const obj={id:id,tenant_id:APP_CONFIG.DEFAULT_TENANT_ID,branch_id:APP_CONFIG.DEFAULT_BRANCH_ID,customer_code:code,customer_type:String(p.customer_type||'perorangan').toLowerCase(),id_pjk:p.id_pjk||'',name:String(p.name).trim(),birth_place:p.birth_place||'',birth_date:p.birth_date||'',address:p.address||'',nationality:p.nationality||'Indonesia',gender:p.gender||'',occupation:p.occupation||'',phone:p.phone||'',account_no:p.account_no||'',id_type:p.id_type||'',ktp_no:p.ktp_no||'',other_id:p.other_id||'',cif:p.cif||'',npwp:p.npwp||'',local_id:p.local_id||'',registered_at:p.registered_at||now,id_image_url:p.id_image_url||'',created_at:now,updated_at:now};
