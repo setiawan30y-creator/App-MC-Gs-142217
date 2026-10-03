@@ -36,7 +36,7 @@ function getCurrencyRateWork_(){
       denominations:ds.map(v=>v.toLocaleString('id-ID',{maximumFractionDigits:6})).join(', ')||'—',
       denomination_count:ds.length,reference,buy,sell,buy_spread:buySpread,sell_spread:sellSpread,
       spread:sell-buy,source:sourceMap[String(r.source_id)]||'Manual',source_id:String(r.source_id||''),
-      effective_at:scalarWorkValue_(r.effective_at),status:String(c.status||r.status||'aktif').toLowerCase(),
+      effective_at:scalarWorkValue_(r.effective_at),status:String(c.status||r.status||'aktif').toLowerCase(),flag:String(c.flag||'')||'🌐',
       stock_available:stockMap[key]||0,rate_id:String(r.id||''),created_at:scalarWorkValue_(r.effective_at||'')
     };
   });
