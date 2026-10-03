@@ -22,7 +22,8 @@ function apiGet(resource, payload) {
     ocrStatus: getOcrStatus,
     dailySession: getDailySession,
     opening: getDailySession,
-    bootstrap: bootstrap
+    bootstrap: bootstrap,
+    rateSourcePreview: getCurrencyRateSourcePreview_
   };
   if (String(resource).indexOf('collection:')===0) return getCollectionWork(String(resource).slice(11));
   if (!handlers[resource]) throw new Error('Resource tidak dikenal: ' + resource);
