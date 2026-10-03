@@ -198,6 +198,25 @@
     return {ok:!!result?.ok,json:async()=>result};
   }
   const pageNames={teller:['Operasional','Teller Workspace'],dashboard:['Management','Dashboard'],stock:['Operasional','Kas & Stok'],customers:['Operasional','Nasabah & KYC'],history:['Operasional','Riwayat Transaksi'],workcenter:['Operasional','Pusat Operasional Lanjut'],compliance:['Pengawasan','Compliance Desk'],modules:['Platform','Pusat Modul']};
+  // Navigation utama: gunakan event delegation agar menu tetap responsif walau ada
+  // komponen halaman yang gagal diinisialisasi.
+  document.addEventListener('click',event=>{
+    const link=event.target.closest('a[data-page]');
+    if(!link)return;
+    event.preventDefault();
+    event.stopPropagation();
+    const target=link.dataset.page;
+    if(!pageNames[target])return;
+    window.__lastNavigationTarget=target;
+    if(link.dataset.centerTarget){
+      activeCenter=link.dataset.centerTarget;
+      if(typeof renderCenters==='function')renderCenters();
+    }
+    document.querySelectorAll('a[data-page]').forEach(item=>item.classList.toggle('active',item===link));
+    if(target==='modules'&&typeof renderModules==='function')renderModules(link.dataset.module||'');
+    if(typeof showPage==='function')showPage(target);
+  });
+
   const modules=[
     ['SaaS Control Center','Tenant, paket berlangganan, feature toggle, branding, batas pengguna/cabang, dan isolasi tenant.','⌘','SaaS & Tenant'],
     ['Customer 360','Master nasabah, riwayat transaksi, profil risiko, dokumen, dan daftar permintaan valuta.','◉','Nasabah & KYC'],
@@ -250,8 +269,28 @@
   function renderModules(focus=''){grid.innerHTML=modules.filter(item=>!focus||item[3]===focus).map(item=>`<article class="module-card ${focus===item[3]?'selected':''}"><div class="module-icon">${item[2]}</div><h3>${item[0]}</h3><p>${item[1]}</p><footer>✓ DOMAIN: ${item[3].toUpperCase()}</footer></article>`).join('');document.querySelector('.module-count').firstChild.textContent=focus?modules.filter(item=>item[3]===focus).length:modules.length;document.getElementById('moduleTitle').textContent=focus||'Pusat Modul Operasional';document.getElementById('moduleSubtitle').textContent=focus?'Komponen blueprint untuk domain '+focus+' disiapkan dalam arsitektur aplikasi yang sama.':'Seluruh domain yang dirancang pada blueprint tersedia dalam satu arsitektur workspace.'}
   renderModules();
   let activeCenter='currencies';
-  function showPage(target){if(!pageNames[target])target='teller';document.querySelectorAll('.page').forEach(page=>page.classList.remove('active'));document.getElementById('page-'+target).classList.add('active');const names=pageNames[target];document.querySelector('.crumb').innerHTML=names[0]+' &nbsp;/&nbsp; <b>'+names[1]+'</b>';if(target==='customers')loadCustomers();if(target==='history')loadHistory();if(target==='workcenter')loadWork();if(history.replaceState)history.replaceState(null,'','#'+target);window.scrollTo({top:0,behavior:'smooth'})}
-  document.querySelectorAll('[data-page]').forEach(link=>link.addEventListener('click',event=>{event.preventDefault();const target=link.dataset.page;if(link.dataset.centerTarget){activeCenter=link.dataset.centerTarget;renderCenters()}document.querySelectorAll('[data-page]').forEach(item=>item.classList.remove('active'));link.classList.add('active');if(target==='modules')renderModules(link.dataset.module||'');showPage(target)}));
+  function showPage(target){
+    if(!pageNames[target])target='teller';
+    const pageEl=document.getElementById('page-'+target);
+    if(!pageEl){console.error('[Navigation] Halaman tidak ditemukan:',target);showToast('Halaman '+target+' belum tersedia.',true);return false;}
+    document.querySelectorAll('.page').forEach(page=>page.classList.remove('active'));
+    pageEl.classList.add('active');
+    const names=pageNames[target];
+    const crumb=document.querySelector('.crumb');
+    if(crumb)crumb.innerHTML=names[0]+' &nbsp;/&nbsp; <b>'+names[1]+'</b>';
+    document.querySelectorAll('a[data-page]').forEach(item=>{
+      const sameTarget=item.dataset.page===target;
+      const sameCenter=target==='workcenter'&&item.dataset.centerTarget===activeCenter;
+      item.classList.toggle('active',sameCenter||(!item.dataset.centerTarget&&sameTarget));
+    });
+    if(target==='customers')loadCustomers();
+    if(target==='history')loadHistory();
+    if(target==='workcenter')loadWork();
+    if(window.history&&history.replaceState)history.replaceState(null,'','#'+target);
+    window.scrollTo({top:0,behavior:'smooth'});
+    return true;
+  }
+  // Listener lama digantikan oleh delegated navigation di atas.
   document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{document.querySelector('.tab.active').classList.remove('active');t.classList.add('active')}));
   document.querySelectorAll('.remove').forEach(x=>x.addEventListener('click',()=>x.closest('tr').remove()));
   document.getElementById('addRow').addEventListener('click',()=>{const row=document.createElement('tr');row.innerHTML='<td class="currency">EUR</td><td class="side-sell">JUAL</td><td contenteditable="true">100.00</td><td class="rate">17,720.00</td><td>1,772,000</td><td>✓ 1,240.00</td><td class="remove">×</td>';document.getElementById('cartBody').append(row);row.querySelector('.remove').addEventListener('click',()=>row.remove())});
