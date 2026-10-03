@@ -6,6 +6,7 @@ function getCustomerKyc(p){
 }
 function saveCustomerKyc(p){
   p=p||{}; const id=String(p.customer_id||''); if(!id) throw new Error('customer_id wajib');
+  p.status=String(p.status||'review').toLowerCase();
   const sh=getSS_().getSheetByName('12_customer_kyc'); const rows=rowsAsObjects_(sh);
   const now=iso_(); const obj={id:uuid_(),tenant_id:APP_CONFIG.DEFAULT_TENANT_ID,customer_id:id,status:String(p.status||'review').toLowerCase(),risk_level:String(p.risk_level||'low').toLowerCase(),verified_at:p.status==='verified'?now:'',verified_by:p.verified_by||'SYSTEM',notes:p.notes||''};
   const old=rows.find(x=>String(x.customer_id)===id);
