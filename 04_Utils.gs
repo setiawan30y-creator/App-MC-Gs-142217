@@ -20,7 +20,21 @@ function findById_(sheetName,id){
   return rowsAsObjects_(getSS_().getSheetByName(sheetName)).find(r=>String(r.id)===String(id))||null;
 }
 function audit_(action,entityType,entityId,before,after){
-  appendObject_('140_audit_logs',{id:uuid_(),tenant_id:APP_CONFIG.DEFAULT_TENANT_ID,branch_id:APP_CONFIG.DEFAULT_BRANCH_ID,actor_id:'SYSTEM',action,entity_type:entityType,entity_id:entityId,before_json:json_(before),after_json:json_(after),created_at:iso_()});
+  // Audit harus selalu tersedia; jangan sampai transaksi/master gagal hanya
+  // karena sheet audit belum pernah di-install pada spreadsheet tenant.
+  ensureSheet_('140_audit_logs',['id','tenant_id','branch_id','actor_id','action','entity_type','entity_id','before_json','after_json','created_at']);
+  appendObject_('140_audit_logs',{
+    id:uuid_(),
+    tenant_id:APP_CONFIG.DEFAULT_TENANT_ID,
+    branch_id:APP_CONFIG.DEFAULT_BRANCH_ID,
+    actor_id:'SYSTEM',
+    action,
+    entity_type:entityType,
+    entity_id:entityId,
+    before_json:json_(before),
+    after_json:json_(after),
+    created_at:iso_()
+  });
 }
 function sequence_(key,prefix){
   const lock=LockService.getScriptLock(); lock.waitLock(30000);
