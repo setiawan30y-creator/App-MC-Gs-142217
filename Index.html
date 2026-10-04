@@ -80,6 +80,58 @@
     </div>
     <div class="user"><div class="avatar">RA</div><div><b>Rizky Ananda</b><span>Teller · Shift Pagi</span></div></div>
   </aside>
+  <script>
+    // Navigation bridge: dipasang sebelum bootstrap aplikasi lain agar menu tetap responsif
+    // walaupun ada modul halaman yang gagal diinisialisasi.
+    (function(){
+      document.addEventListener('click',function(event){
+        const link=event.target.closest && event.target.closest('a[data-page]');
+        if(!link)return;
+        const target=link.getAttribute('data-page');
+        const page=document.getElementById('page-'+target);
+        if(!page)return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const center=link.getAttribute('data-center-target');
+        if(center)window.__pendingCenterTarget=center;
+        document.querySelectorAll('.page').forEach(function(el){el.classList.toggle('active',el===page)});
+        document.querySelectorAll('a[data-page]').forEach(function(el){
+          el.classList.toggle('active',el===link);
+        });
+        const names={
+          teller:['Operasional','Teller Workspace'],
+          dashboard:['Management','Dashboard'],
+          stock:['Operasional','Kas & Stok'],
+          customers:['Operasional','Nasabah & KYC'],
+          history:['Operasional','Riwayat Transaksi'],
+          workcenter:['Operasional','Master Kurs & Valuta'],
+          compliance:['Pengawasan','Compliance Desk'],
+          modules:['Platform','Pusat Modul']
+        }[target];
+        const crumb=document.querySelector('.crumb');
+        if(crumb&&names)crumb.innerHTML=names[0]+' &nbsp;/&nbsp; <b>'+names[1]+'</b>';
+        if(target==='workcenter'){
+          if(center)window.__activeCenterFallback=center;
+          if(typeof loadWork==='function'){
+            try{loadWork()}catch(error){console.error('[Navigation Bridge] loadWork:',error)}
+          }
+        }
+        if(target==='customers'&&typeof loadCustomers==='function'){
+          try{loadCustomers()}catch(error){console.error('[Navigation Bridge] loadCustomers:',error)}
+        }
+        if(target==='history'&&typeof loadHistory==='function'){
+          try{loadHistory()}catch(error){console.error('[Navigation Bridge] loadHistory:',error)}
+        }
+        if(target==='modules'&&typeof renderModules==='function'){
+          try{renderModules(link.getAttribute('data-module')||'')}catch(error){console.error('[Navigation Bridge] renderModules:',error)}
+        }
+        if(window.history&&history.replaceState){
+          try{history.replaceState(null,'','#'+target)}catch(error){}
+        }
+        window.scrollTo({top:0,behavior:'smooth'});
+      },true);
+    })();
+  </script>
   <main>
     <header class="topbar"><div class="crumb">Operasional &nbsp;/&nbsp; <b>Teller Workspace</b></div><div class="top-right"><span class="date">SEL, 18 AGU 2026 · 10:42 WIB</span><span class="online">Sistem normal</span><button class="iconbtn">♧</button></div></header>
     <div class="page active" id="page-teller"><section class="headline"><div><h1>Ruang Teller</h1><p>Transaksi cepat, presisi, dan tercatat dengan sempurna.</p></div><div class="actions"><button class="btn">⌘  Cari Nasabah</button><button class="btn gold">▣ KYC Scan</button><button class="btn primary" id="newTransaction">+ Transaksi Baru</button></div></section>
@@ -269,7 +321,7 @@
   const grid=document.getElementById('moduleGrid');
   function renderModules(focus=''){grid.innerHTML=modules.filter(item=>!focus||item[3]===focus).map(item=>`<article class="module-card ${focus===item[3]?'selected':''}"><div class="module-icon">${item[2]}</div><h3>${item[0]}</h3><p>${item[1]}</p><footer>✓ DOMAIN: ${item[3].toUpperCase()}</footer></article>`).join('');document.querySelector('.module-count').firstChild.textContent=focus?modules.filter(item=>item[3]===focus).length:modules.length;document.getElementById('moduleTitle').textContent=focus||'Pusat Modul Operasional';document.getElementById('moduleSubtitle').textContent=focus?'Komponen blueprint untuk domain '+focus+' disiapkan dalam arsitektur aplikasi yang sama.':'Seluruh domain yang dirancang pada blueprint tersedia dalam satu arsitektur workspace.'}
   renderModules();
-  let activeCenter='currencies';
+  let activeCenter=window.__pendingCenterTarget||window.__activeCenterFallback||'currencies';
   function showPage(target){
     if(!pageNames[target])target='teller';
     const pageEl=document.getElementById('page-'+target);
@@ -286,7 +338,7 @@
     });
     if(target==='customers')loadCustomers();
     if(target==='history')loadHistory();
-    if(target==='workcenter')loadWork();
+    if(target==='workcenter'){activeCenter=window.__pendingCenterTarget||window.__activeCenterFallback||activeCenter;loadWork();}
     if(window.history&&history.replaceState)history.replaceState(null,'','#'+target);
     window.scrollTo({top:0,behavior:'smooth'});
     return true;
