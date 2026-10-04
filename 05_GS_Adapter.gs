@@ -75,16 +75,119 @@ function ensureCurrencyRateSchema_(){
   ensureSheet_('31_rates',['id','currency_id','reference_rate','reference_buy','reference_sell','buy','sell','buy_spread','sell_spread','source_id','source_status','source_updated_at','last_fetch_at','source_denomination','status','approved_by','approved_at','published_at','effective_at']);
 }
 function saveCurrencyMaster(p){
-  ensureCurrencyRateSchema_();p=p||{};const code=String(p.code||'').trim().toUpperCase();if(!/^[A-Z]{3}$/.test(code))throw new Error('Kode mata uang harus 3 huruf ISO 4217.');
-  const currencies=getCollection_('20_currencies');if(currencies.some(r=>String(r.code||'').toUpperCase()===code))throw new Error('Kode '+code+' sudah terdaftar.');
-  const id=uuid_(),now=iso_(),currency={id,code,numeric_code:String(p.numeric_code||''),name:String(p.name||code),country:String(p.country||''),country_code:String(p.country_code||''),flag:String(p.flag||'🌐'),status:String(p.status||'aktif')};
-  const csh=getSS_().getSheetByName('20_currencies'),ch=csh.getRange(1,1,1,csh.getLastColumn()).getValues()[0];csh.appendRow(ch.map(h=>Object.prototype.hasOwnProperty.call(currency,h)?currency[h]:''));
-  const denoms=String(p.denominations||'').split(',').map(x=>Number(String(x).trim())).filter(x=>isFinite(x)&&x>0);if(denoms.length){const dsh=getSS_().getSheetByName('21_denominations'),dh=dsh.getRange(1,1,1,dsh.getLastColumn()).getValues()[0];denoms.forEach(v=>{const o={id:uuid_(),currency_id:id,value:v,type:'NOTE',status:'aktif'};dsh.appendRow(dh.map(h=>Object.prototype.hasOwnProperty.call(o,h)?o[h]:''));});}
-  const url=String(p.source_url||'').trim(),sourceId=url?('SRC-SOURCE-'+Utilities.base64EncodeWebSafe(url).slice(0,24)):'SRC-MANUAL';
-  if(url){const sh=getSS_().getSheetByName('30_rate_sources'),src=getCollection_('30_rate_sources');if(!src.some(r=>String(r.id)===sourceId)){const h=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0],o={id:sourceId,name:'Website Reference',type:'WEBSITE',endpoint:url,status:'aktif',refresh_interval:10,last_success_at:'',last_fetch_at:'',last_error:'',source_updated_at:''};sh.appendRow(h.map(x=>Object.prototype.hasOwnProperty.call(o,x)?o[x]:''));}}
-  const source=url?(()=>{try{return fetchSmartDeal_(url)}catch(e){const last=getLastSmartDealOnline_(url);return last?{ok:false,fallback:true,items:last.items,source_updated_at:last.source_updated_at,last_online_at:last.fetched_at,error:String(e&&e.message||e)}:{ok:false,error:String(e&&e.message||e)}}})():null,x=source&&source.items?source.items[code]:null,rb=x?x.buy:Number(p.reference_buy||0),rs=x?x.sell:Number(p.reference_sell||0),bs=Number(p.buy_spread||0),ss=Number(p.sell_spread||0),buy=rb+bs,sell=rs+ss;
-  const rate={id:uuid_(),currency_id:id,reference_rate:(rb+rs)/2,reference_buy:rb,reference_sell:rs,buy,sell,buy_spread:bs,sell_spread:ss,source_id:sourceId,source_status:source&&source.ok?'online':(url?'offline':'manual'),source_updated_at:source&&source.source_updated_at||'',last_fetch_at:source&&source.fetched_at||now,source_denomination:x&&x.denomination||'',status:'published',approved_by:'SYSTEM',approved_at:now,published_at:now,effective_at:p.effective_at?new Date(p.effective_at):new Date()};
-  const rsh=getSS_().getSheetByName('31_rates'),rh=rsh.getRange(1,1,1,rsh.getLastColumn()).getValues()[0];rsh.appendRow(rh.map(h=>Object.prototype.hasOwnProperty.call(rate,h)?rate[h]:''));audit_('CREATE','CURRENCY',id,null,{currency,rate});return {ok:true,currency,rate};
+  ensureCurrencyRateSchema_();
+  p=p||{};
+  const code=String(p.code||'').trim().toUpperCase();
+  if(!/^[A-Z]{3}$/.test(code))throw new Error('Kode mata uang harus 3 huruf ISO 4217.');
+
+  const now=iso_();
+  const currencies=getCollection_('20_currencies');
+  const existing=currencies.find(r=>String(r.code||'').toUpperCase()===code)||null;
+  const id=existing?String(existing.id):uuid_();
+
+  const currency={
+    id,
+    code,
+    numeric_code:String(p.numeric_code||existing?.numeric_code||''),
+    name:String(p.name||existing?.name||code),
+    country:String(p.country||existing?.country||''),
+    country_code:String(p.country_code||existing?.country_code||''),
+    flag:String(p.flag||existing?.flag||'🌐'),
+    status:String(p.status||existing?.status||'aktif')
+  };
+
+  const csh=getSS_().getSheetByName('20_currencies');
+  const ch=csh.getRange(1,1,1,csh.getLastColumn()).getValues()[0];
+  if(existing){
+    const values=csh.getDataRange().getValues();
+    const ri=values.findIndex((row,i)=>i>0&&String(row[ch.indexOf('id')])===id);
+    if(ri>=1)csh.getRange(ri+1,1,1,ch.length).setValues([ch.map(h=>Object.prototype.hasOwnProperty.call(currency,h)?currency[h]:values[ri][ch.indexOf(h)])]);
+  }else{
+    csh.appendRow(ch.map(h=>Object.prototype.hasOwnProperty.call(currency,h)?currency[h]:''));
+  }
+
+  // Denominasi di-upsert: tidak membuat duplikat ketika valuta disimpan ulang.
+  const denoms=String(p.denominations||'').split(',').map(x=>Number(String(x).trim())).filter(x=>isFinite(x)&&x>0);
+  if(denoms.length){
+    const dsh=getSS_().getSheetByName('21_denominations');
+    const dh=dsh.getRange(1,1,1,dsh.getLastColumn()).getValues()[0];
+    const existingDenoms=getCollection_('21_denominations').filter(r=>String(r.currency_id)===id);
+    denoms.forEach(v=>{
+      if(existingDenoms.some(r=>Number(r.value)===v))return;
+      const o={id:uuid_(),currency_id:id,value:v,type:'NOTE',status:'aktif'};
+      dsh.appendRow(dh.map(h=>Object.prototype.hasOwnProperty.call(o,h)?o[h]:''));
+    });
+  }
+
+  const url=String(p.source_url||'').trim();
+  const sourceId=url?('SRC-SOURCE-'+Utilities.base64EncodeWebSafe(url).slice(0,24)):'SRC-MANUAL';
+  if(url){
+    const sh=getSS_().getSheetByName('30_rate_sources');
+    const src=getCollection_('30_rate_sources');
+    if(!src.some(r=>String(r.id)===sourceId)){
+      const h=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
+      const o={id:sourceId,name:'Website Reference',type:'WEBSITE',endpoint:url,status:'aktif',refresh_interval:10,last_success_at:'',last_fetch_at:'',last_error:'',source_updated_at:''};
+      sh.appendRow(h.map(x=>Object.prototype.hasOwnProperty.call(o,x)?o[x]:''));
+    }
+  }
+
+  const source=url?(()=>{try{
+    return fetchSmartDeal_(url);
+  }catch(e){
+    const last=getLastSmartDealOnline_(url);
+    return last?{ok:false,fallback:true,items:last.items,source_updated_at:last.source_updated_at,last_online_at:last.fetched_at,error:String(e&&e.message||e)}
+      :{ok:false,error:String(e&&e.message||e)};
+  }})():null;
+
+  const x=source&&source.items?source.items[code]:null;
+  const rb=x?x.buy:Number(p.reference_buy||existing?.reference_buy||0);
+  const rs=x?x.sell:Number(p.reference_sell||existing?.reference_sell||0);
+  const bs=Number(p.buy_spread||0);
+  const ss=Number(p.sell_spread||0);
+  const buy=rb+bs;
+  const sell=rs+ss;
+
+  const rates=getCollection_('31_rates');
+  const previousRate=rates
+    .filter(r=>String(r.currency_id)===id)
+    .sort((a,b)=>new Date(b.effective_at||0)-new Date(a.effective_at||0))[0]||null;
+
+  const rate={
+    id:previousRate?String(previousRate.id):uuid_(),
+    currency_id:id,
+    reference_rate:(rb+rs)/2,
+    reference_buy:rb,
+    reference_sell:rs,
+    buy,
+    sell,
+    buy_spread:bs,
+    sell_spread:ss,
+    source_id:sourceId,
+    source_status:source&&source.ok?'online':(url?'offline':'manual'),
+    source_updated_at:source&&source.source_updated_at||'',
+    last_fetch_at:source&&source.fetched_at||now,
+    source_denomination:x&&x.denomination||'',
+    status:'published',
+    approved_by:'SYSTEM',
+    approved_at:now,
+    published_at:now,
+    effective_at:p.effective_at?new Date(p.effective_at):(previousRate?.effective_at||new Date())
+  };
+
+  const rsh=getSS_().getSheetByName('31_rates');
+  const rh=rsh.getRange(1,1,1,rsh.getLastColumn()).getValues()[0];
+  if(previousRate){
+    const values=rsh.getDataRange().getValues();
+    const ri=values.findIndex((row,i)=>i>0&&String(row[rh.indexOf('id')])===String(previousRate.id));
+    if(ri>=1){
+      rsh.getRange(ri+1,1,1,rh.length).setValues([rh.map(h=>Object.prototype.hasOwnProperty.call(rate,h)?rate[h]:values[ri][rh.indexOf(h)])]);
+    }
+  }else{
+    rsh.appendRow(rh.map(h=>Object.prototype.hasOwnProperty.call(rate,h)?rate[h]:''));
+  }
+
+  audit_(existing?'UPDATE':'CREATE','CURRENCY',id,existing?{currency:existing,rate:previousRate}:null,{currency,rate});
+  return {ok:true,action:existing?'updated':'created',currency,rate};
 }
 function getCollectionWork(name){
   if(name==='currencies') return getCurrencyRateWork_();
