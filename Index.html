@@ -112,6 +112,12 @@
         if(crumb&&names)crumb.innerHTML=names[0]+' &nbsp;/&nbsp; <b>'+names[1]+'</b>';
         if(target==='workcenter' && center){
           window.__activeCenterFallback=center;
+          // Navigation bridge harus memuat data Workcenter juga.
+          // Bridge berjalan pada fase capture dan mencegah listener navigasi lama,
+          // jadi tanpa panggilan ini halaman bisa terbuka tetapi tabel tetap kosong.
+          if(typeof loadWork==='function'){
+            try{loadWork()}catch(error){console.error('[Navigation Bridge] loadWork:',error)}
+          }
         }
         if(target==='customers'&&typeof loadCustomers==='function'){
           try{loadCustomers()}catch(error){console.error('[Navigation Bridge] loadCustomers:',error)}
