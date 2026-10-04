@@ -548,58 +548,19 @@ syncCustomerIdTypes();
 function rateNumber(v){return Number(v||0).toLocaleString('id-ID',{minimumFractionDigits:0,maximumFractionDigits:4})}
 function rateDate(v){if(!v)return '—';const d=new Date(v);return isNaN(d.getTime())?String(v):d.toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'})}
 function renderCurrencyRates(items,query=''){
-  // Master Kurs menampilkan hanya valuta yang sudah ditambahkan ke master.
-  // Daftar ISO 4217 tetap tersedia melalui tombol "+ Tambah Valuta".
-  const rows=(items||[]).map(item=>({
-    code:String(item.code||'').toUpperCase(),
-    name:String(item.name||item.code||''),
-    country:String(item.country||''),
-    numeric_code:String(item.numeric_code||''),
-    minor_unit:String(item.minor_unit||''),
-    flag:String(item.flag||currencyFlagForCode(item.code,'')),
-    reference_buy:item.reference_buy,
-    reference_sell:item.reference_sell,
-    buy:item.buy,
-    sell:item.sell,
-    buy_spread:item.buy_spread,
-    sell_spread:item.sell_spread,
-    source:item.source||'—',
-    source_updated_at:item.source_updated_at,
-    effective_at:item.effective_at,
-    status:item.status||'aktif'
-  }));
+  const rows=(items||[]).map(item=>({code:String(item.code||'').toUpperCase(),name:String(item.name||item.code||''),country:String(item.country||''),numeric_code:String(item.numeric_code||''),minor_unit:String(item.minor_unit||''),flag:String(item.flag||currencyFlagForCode(item.code,'')),reference_buy:item.reference_buy,reference_sell:item.reference_sell,buy:item.buy,sell:item.sell,buy_spread:item.buy_spread,sell_spread:item.sell_spread,source:item.source||'—',source_updated_at:item.source_updated_at,effective_at:item.effective_at,status:item.status||'aktif'}));
   const filter=String(query||'').toLowerCase().trim();
-  const filtered=rows.filter(item=>
-    [item.code,item.name,item.country,item.numeric_code,item.minor_unit,item.status]
-      .join(' ').toLowerCase().includes(filter)
-  );
-
-  document.getElementById('workHead').innerHTML=
-    '<tr><th rowspan="2">Bendera</th><th rowspan="2">Valas</th><th colspan="3" class="rate-group-buy">Kurs Beli</th><th colspan="3" class="rate-group-sell">Kurs Jual</th></tr>'+
-    '<tr><th>Reference</th><th>Spread</th><th>Kurs Saat Ini</th><th>Reference</th><th>Spread</th><th>Kurs Saat Ini</th></tr>';
-
-  if(!rows.length){
-    document.getElementById('workRows').innerHTML=
-      '<tr><td colspan="8" class="currency-empty-state">'+
-      '<div class="empty-icon">¤</div>'+
-      '<strong>Belum ada valuta</strong>'+
-      '<span>Tambahkan mata uang dari daftar ISO 4217 menggunakan tombol <b>+ Tambah Valuta</b>.</span>'+
-      '</td></tr>';
-    return;
-  }
-
-  document.getElementById('workRows').innerHTML=filtered.length
-    ? filtered.map(item=>`<tr>
-      <td class="currency currency-flag-cell"><span class="currency-table-flag">${currencyFlagForCode(item.code,item.flag)}</span></td>
-      <td class="currency currency-name-cell"><div><b>${item.code}</b> · ${item.name}</div><span class="caption">${item.country}</span></td>
-      <td class="rate">${item.reference_buy==null?'—':rateNumber(item.reference_buy)}</td>
-      <td class="rate">${item.buy_spread==null?'—':rateNumber(item.buy_spread)}</td>
-      <td class="rate current-rate">${item.buy==null?'—':rateNumber(item.buy)}</td>
-      <td class="rate">${item.reference_sell==null?'—':rateNumber(item.reference_sell)}</td>
-      <td class="rate">${item.sell_spread==null?'—':rateNumber(item.sell_spread)}</td>
-      <td class="rate current-rate">${item.sell==null?'—':rateNumber(item.sell)}</td>
-    </tr>`).join('')
-    : '<tr><td colspan="8" style="text-align:center;color:#69736f">Valuta tidak ditemukan.</td></tr>';
+  const filtered=rows.filter(item=>[item.code,item.name,item.country,item.numeric_code,item.minor_unit,item.status].join(' ').toLowerCase().includes(filter));
+  const head=document.getElementById('workHead'),body=document.getElementById('workRows'); if(!head||!body)return;
+  head.innerHTML='<tr><th rowspan="2">Bendera</th><th rowspan="2">Valas</th><th colspan="3" class="rate-group-buy">Kurs Beli</th><th colspan="3" class="rate-group-sell">Kurs Jual</th></tr><tr><th>Reference</th><th>Spread</th><th>Kurs Saat Ini</th><th>Reference</th><th>Spread</th><th>Kurs Saat Ini</th></tr>';
+  if(!rows.length){body.innerHTML='<tr><td colspan="8" class="currency-empty-state"><div class="empty-icon">¤</div><strong>Belum ada valuta</strong><span>Tambahkan mata uang dari daftar ISO 4217 menggunakan tombol <b>+ Tambah Valuta</b>.</span></td></tr>';return;}
+  body.innerHTML=filtered.length?filtered.map(item=>'<tr><td class="currency currency-flag-cell"><span class="currency-table-flag">'+currencyFlagForCode(item.code,item.flag)+'</span></td><td class="currency currency-name-cell"><div><b>'+item.code+'</b> · '+item.name+'</div><span class="caption">'+item.country+'</span></td><td class="rate">'+(item.reference_buy==null?'—':rateNumber(item.reference_buy))+'</td><td class="rate">'+(item.buy_spread==null?'—':rateNumber(item.buy_spread))+'</td><td class="rate current-rate">'+(item.buy==null?'—':rateNumber(item.buy))+'</td><td class="rate">'+(item.reference_sell==null?'—':rateNumber(item.reference_sell))+'</td><td class="rate">'+(item.sell_spread==null?'—':rateNumber(item.sell_spread))+'</td><td class="rate current-rate">'+(item.sell==null?'—':rateNumber(item.sell))+'</td></tr>').join(''):'<tr><td colspan="8" style="text-align:center;color:#69736f;padding:28px">Valuta tidak ditemukan.</td></tr>';
+}
+function renderCurrencyRateError(message){
+  const head=document.getElementById('workHead'),body=document.getElementById('workRows'); if(!head||!body)return;
+  head.innerHTML='<tr><th>Bendera</th><th>Valas</th><th colspan="6">Kurs Beli &amp; Kurs Jual</th></tr>';
+  const safe=String(message||'Terjadi kesalahan pada koneksi data.').replace(/[<>&"]/g,'');
+  body.innerHTML='<tr><td colspan="8" class="currency-empty-state"><div class="empty-icon">!</div><strong>Data Master Kurs belum dapat dimuat</strong><span>'+safe+'</span><small>Struktur tabel tetap aktif. Setelah deployment terbaru diterapkan, buka kembali menu Master Kurs.</small></td></tr>';
 }
 function renderWork(items,query=''){
   if(activeCenter==='currencies'){renderCurrencyRates(items,query);return}
@@ -651,7 +612,7 @@ function renderWork(items,query=''){
     }catch(error){
       if(requestId!==currencyWorkRequest)return;
       if(center[0]!=='currencies')showToast(error.message,true);
-      else console.warn('[Master Kurs] Refresh gagal, tabel sebelumnya dipertahankan:',error);
+      else { console.warn('[Master Kurs] Refresh gagal:',error); renderCurrencyRateError(error && error.message ? error.message : 'Gagal memuat Master Kurs.'); }
       if(center[0]==='currencies'){
         currencyWorkTimer=setInterval(()=>loadWork(),10000);
       }
