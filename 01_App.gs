@@ -17,6 +17,7 @@ function apiGet(resource, payload) {
     dashboard: getDashboard,
     customers: getCustomers,
     transactions: getTransactions,
+    transactionCarts: getTransactionCarts,
     customerKyc: getCustomerKyc,
     customer360: getCustomer360,
     ocrStatus: getOcrStatus,
@@ -34,6 +35,8 @@ function apiPost(resource, payload) {
   const handlers = {
     customers: saveCustomer,
     transactions: saveTransaction,
+    transactionCarts: saveTransactionCart,
+    transactionSubmit: submitTransaction,
     customerKyc: saveCustomerKyc,
     ocr: processOcr,
     opening: saveDailyOpening,
