@@ -318,8 +318,24 @@
     let payload={};
     if(options.body){ try{ payload=JSON.parse(options.body); }catch(e){} }
     const result=options.method==='POST'
-      ? await new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).apiPost(resource,payload))
-      : await new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).apiGet(resource,payload));
+      ? await new Promise((resolve,reject)=>google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(err=>{
+            const message=err&&err.message
+              ? err.message
+              : (typeof err==='string' ? err : 'Apps Script tidak mengembalikan detail error.');
+            reject(new Error(message));
+          })
+          .apiPost(resource,payload))
+      : await new Promise((resolve,reject)=>google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(err=>{
+            const message=err&&err.message
+              ? err.message
+              : (typeof err==='string' ? err : 'Apps Script tidak mengembalikan detail error.');
+            reject(new Error(message));
+          })
+          .apiGet(resource,payload));
     return {ok:!!result?.ok,json:async()=>result};
   }
   const pageNames={teller:['Operasional','Teller Workspace'],dashboard:['Management','Dashboard'],stock:['Operasional','Kas & Stok'],customers:['Operasional','Nasabah & KYC'],history:['Operasional','Riwayat Transaksi'],workcenter:['Operasional','Pusat Operasional Lanjut'],compliance:['Pengawasan','Compliance Desk'],modules:['Platform','Pusat Modul']};
