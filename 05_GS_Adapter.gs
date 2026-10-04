@@ -59,6 +59,7 @@ function getCurrencyRateSourcePreview_(p){
   }
 }
 function getCurrencyRateWork_(){
+  ensureCurrencyRateSchema_();
   try{refreshSmartDealRates_()}catch(e){}
   const currencies=getCollection_('20_currencies'),denoms=getCollection_('21_denominations'),rates=getCollection_('31_rates'),sources=getCollection_('30_rate_sources'),stock=getCollection_('50_stock');
   const sourceMap={},sourceMeta={};sources.forEach(r=>{sourceMap[String(r.id)]=String(r.name||r.type||r.id||'—');sourceMeta[String(r.id)]=r;});
