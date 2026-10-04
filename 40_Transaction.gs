@@ -2,46 +2,10 @@ function getTransactions(){
   return {ok:true,data:rowsAsObjects_(getSS_().getSheetByName('41_transactions')).slice(-200).reverse()};
 }
 
-function saveTransaction(p){
-  p=p||{};
-  const customerId=p.customer_id||resolveCustomerId_(p.customer);
-  if(!customerId) throw new Error('Nasabah wajib dipilih atau dibuat terlebih dahulu');
-
-  const items=Array.isArray(p.items)?p.items.map(x=>({
-    side:String(x.side||p.type||'').toUpperCase(),
-    currency_id:x.currency_id||x.currency||'',
-    denomination:x.denomination||'',
-    qty:Number(x.qty||1),
-    rate:Number(String(x.rate||0).replace(/[^0-9.-]/g,'')),
-    amount:Number(String(x.amount||x.subtotal||0).replace(/[^0-9.-]/g,'')),
-    rate_snapshot_id:x.rate_snapshot_id||''
-  })):[];
-  if(!items.length) throw new Error('Item transaksi wajib diisi.');
-  if(items.some(x=>!x.currency_id||x.qty<=0||x.amount<0)) throw new Error('Item transaksi tidak valid.');
-
-  const trxId=uuid_(), trxNo=sequence_('TRX','TRX'), now=iso_();
-  const total=items.reduce((sum,x)=>sum+(Number(x.amount)||0),0);
-  const status=String(p.status||'DRAFT').toUpperCase();
-  const trx={
-    id:trxId,tenant_id:APP_CONFIG.DEFAULT_TENANT_ID,branch_id:p.branch_id||APP_CONFIG.DEFAULT_BRANCH_ID,
-    trx_no:trxNo,cart_id:p.cart_id||'',customer_id:customerId,status,grand_total:total,
-    currency_total:json_(items.map(x=>x.currency_id)),created_at:now,updated_at:now
-  };
-
-  appendObject_('41_transactions',trx);
-  items.forEach(x=>appendObject_('42_transaction_items',{
-    id:uuid_(),transaction_id:trxId,side:x.side,currency_id:x.currency_id,
-    denomination:x.denomination,qty:x.qty,rate:x.rate,amount:x.amount,rate_snapshot_id:x.rate_snapshot_id
-  }));
-
-  let posting=null;
-  if(['PAID','SETTLED','COMPLETED'].indexOf(status)>=0){
-    posting=postTransaction_(trx,items,p.payments,p);
-  }
-
-  audit_('CREATE','TRANSACTION',trxId,null,{transaction:trx,posting});
-  return {ok:true,data:{transaction:trx,posting}};
-}
+function getTransactionCarts(p){p=p||{};const rows=rowsAsObjects_(getSS_().getSheetByName('40_transaction_carts'));const branchId=p.branch_id||APP_CONFIG.DEFAULT_BRANCH_ID;return {ok:true,data:rows.filter(r=>String(r.branch_id||'')===String(branchId)).slice(-50).reverse()};}
+function saveTransactionCart(p){p=p||{};const now=iso_(),branchId=p.branch_id||APP_CONFIG.DEFAULT_BRANCH_ID,id=p.id||uuid_();let cartNo=p.cart_no||'';if(!cartNo)cartNo=sequence_('CART','CART');const items=Array.isArray(p.items)?p.items:[],total=items.reduce((s,x)=>s+(Number(x.amount||x.subtotal)||0),0),status=String(p.status||'DRAFT').toUpperCase(),sh=getSS_().getSheetByName('40_transaction_carts'),rows=rowsAsObjects_(sh),existing=rows.find(r=>String(r.id)===String(id));const cart={id,tenant_id:APP_CONFIG.DEFAULT_TENANT_ID,branch_id:branchId,cart_no:cartNo,customer_id:p.customer_id||'',status,grand_total:total,created_at:existing&&existing.created_at?existing.created_at:now,updated_at:now};if(existing){const all=sh.getDataRange().getValues(),h=all[0],ri=all.findIndex(r=>String(r[0])===String(id));Object.keys(cart).forEach(k=>{const ci=h.indexOf(k);if(ci>=0)sh.getRange(ri+1,ci+1).setValue(cart[k]);});}else appendObject_('40_transaction_carts',cart);audit_('UPSERT','TRANSACTION_CART',id,existing||null,cart);return {ok:true,data:{cart,items}};}
+function submitTransaction(p){p=p||{};const customerId=p.customer_id||resolveCustomerId_(p.customer);if(!customerId)throw new Error('Nasabah wajib dipilih atau dibuat terlebih dahulu');const items=Array.isArray(p.items)?p.items.map(x=>({side:String(x.side||p.type||'').toUpperCase(),currency_id:x.currency_id||x.currency||'',denomination:x.denomination||'',qty:Number(x.qty||1),rate:Number(String(x.rate||0).replace(/[^0-9.-]/g,'')),amount:Number(String(x.amount||x.subtotal||0).replace(/[^0-9.-]/g,'')),rate_snapshot_id:x.rate_snapshot_id||''})):[];if(!items.length)throw new Error('Item transaksi wajib diisi.');if(items.some(x=>!x.currency_id||x.qty<=0||x.amount<0))throw new Error('Item transaksi tidak valid.');const trxId=uuid_(),trxNo=sequence_('INV','MC'),now=iso_(),total=items.reduce((s,x)=>s+(Number(x.amount)||0),0),trx={id:trxId,tenant_id:APP_CONFIG.DEFAULT_TENANT_ID,branch_id:p.branch_id||APP_CONFIG.DEFAULT_BRANCH_ID,trx_no:trxNo,cart_id:p.cart_id||'',customer_id:customerId,status:'SUBMITTED',grand_total:total,currency_total:json_(items.map(x=>x.currency_id)),created_at:now,updated_at:now};appendObject_('41_transactions',trx);items.forEach(x=>appendObject_('42_transaction_items',{id:uuid_(),transaction_id:trxId,side:x.side,currency_id:x.currency_id,denomination:x.denomination,qty:x.qty,rate:x.rate,amount:x.amount,rate_snapshot_id:x.rate_snapshot_id}));if(p.cart_id){const sh=getSS_().getSheetByName('40_transaction_carts'),rows=rowsAsObjects_(sh),existing=rows.find(r=>String(r.id)===String(p.cart_id));if(existing){const all=sh.getDataRange().getValues(),h=all[0],ri=all.findIndex(r=>String(r[0])===String(p.cart_id)),ci=h.indexOf('status'),ui=h.indexOf('updated_at');if(ci>=0)sh.getRange(ri+1,ci+1).setValue('SUBMITTED');if(ui>=0)sh.getRange(ri+1,ui+1).setValue(now);}}audit_('SUBMIT','TRANSACTION',trxId,null,{transaction:trx});return {ok:true,data:{transaction:trx}};}
+function saveTransaction(p){p=p||{};if(String(p.status||'').toUpperCase()==='SUBMITTED'||p.submit===true)return submitTransaction(p);return saveTransactionCart(p);}
 
 function resolveCustomerId_(name){
   if(!name) return '';
