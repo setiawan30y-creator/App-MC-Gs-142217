@@ -39,7 +39,7 @@
   </style><style id="customerFormStyles">
 .customer-modal{position:fixed;inset:0;background:rgba(8,35,29,.48);display:none;align-items:center;justify-content:center;z-index:30;padding:18px}.customer-modal.open{display:flex}.customer-form{background:#fff;width:min(820px,100%);max-height:92vh;overflow:auto;border-radius:8px;border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.2)}.customer-form-head{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.customer-form-head h2{font:700 20px 'Playfair Display';margin:0;color:var(--deep)}.customer-form-head p{margin:3px 0 0;color:var(--muted);font-size:9px}.customer-form-body{padding:16px}.customer-type{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}.customer-type label{border:1px solid var(--line);border-radius:6px;padding:11px;cursor:pointer;background:#fafbf8}.customer-type input{accent-color:var(--jade);margin-right:7px}.customer-type label:has(input:checked){border-color:var(--jade);background:#edf7f1;box-shadow:0 0 0 1px var(--jade)}.customer-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.customer-form-grid .wide{grid-column:span 2}.customer-form-section{font:700 8px Manrope;letter-spacing:1px;color:var(--jade);text-transform:uppercase;border-bottom:1px solid var(--line);padding-bottom:5px;margin:14px 0 9px;grid-column:1/-1}.customer-form-grid label{display:block;font-size:8px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}.customer-form-grid input,.customer-form-grid select{width:100%;padding:7px 8px;border:1px solid #cdd2cb;border-radius:4px;font:10px Manrope;background:#fff}.customer-form-grid input:focus,.customer-form-grid select:focus{outline:none;border-color:var(--jade);box-shadow:0 0 0 2px #dff1e880}.id-help{font-size:8px;color:var(--muted);margin-top:4px}.customer-form-foot{padding:11px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:7px}@media(max-width:700px){.customer-form-grid{grid-template-columns:1fr 1fr}.customer-form-grid .wide{grid-column:span 2}}@media(max-width:480px){.customer-form-grid{grid-template-columns:1fr}.customer-form-grid .wide{grid-column:auto}.customer-type{grid-template-columns:1fr}}
 </style><style id="currencyMasterStyles">
-.currency-preview{display:flex;align-items:center;gap:11px;border:1px solid #d7e1da;background:#f5faf7;border-radius:7px;padding:11px 13px;margin-bottom:13px}.currency-flag{font-size:30px;line-height:1}.currency-preview strong{display:block;font:700 16px 'DM Mono';color:var(--deep)}.currency-preview span:not(.currency-flag){display:block;color:var(--muted);font-size:9px;margin-top:2px}.currency-form{width:min(900px,100%)}.currency-form input[readonly]{background:#f5f7f4;color:#53635d}.currency-form select,.currency-form input{font-family:Manrope}.rate-source-status{display:flex;align-items:center;gap:7px;border:1px solid #d7e1da;background:#f5faf7;border-radius:7px;padding:9px 11px;font-size:11px;font-weight:700}.rate-source-status span{color:#bc903d}.rate-source-status.online span{color:#1d6c5d}.rate-source-status.offline span{color:#d36c52}.currency-form .customer-form-section{grid-column:1/-1}.currency-modal .customer-form-body{padding-bottom:8px}.currency-table-flag{font-family:"Apple Color Emoji","Segoe UI Emoji",sans-serif;font-size:16px;vertical-align:-2px;margin-right:6px}
+.currency-preview{display:flex;align-items:center;gap:11px;border:1px solid #d7e1da;background:#f5faf7;border-radius:7px;padding:11px 13px;margin-bottom:13px}.currency-flag{font-size:30px;line-height:1}.currency-preview strong{display:block;font:700 16px 'DM Mono';color:var(--deep)}.currency-preview span:not(.currency-flag){display:block;color:var(--muted);font-size:9px;margin-top:2px}.currency-form{width:min(900px,100%)}.currency-form input[readonly]{background:#f5f7f4;color:#53635d}.currency-form select,.currency-form input{font-family:Manrope}.currency-form #currencyCode{display:none}.rate-source-status{display:flex;align-items:center;gap:7px;border:1px solid #d7e1da;background:#f5faf7;border-radius:7px;padding:9px 11px;font-size:11px;font-weight:700}.rate-source-status span{color:#bc903d}.rate-source-status.online span{color:#1d6c5d}.rate-source-status.offline span{color:#d36c52}.currency-form .customer-form-section{grid-column:1/-1}.currency-modal .customer-form-body{padding-bottom:8px}.currency-table-flag{font-family:"Apple Color Emoji","Segoe UI Emoji",sans-serif;font-size:16px;vertical-align:-2px;margin-right:6px}
 </style></head>
 <body>
 <div class="app">
@@ -677,12 +677,26 @@ function renderWork(items,query=''){
   function fmtRateDate(v){if(!v)return '—';const d=new Date(v);return isNaN(d.getTime())?String(v):d.toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'medium'});}
   let currencyPreviewTimer=null;
   async function refreshCurrencySourcePreview(){const code=currencyCode.value,url=document.getElementById('currencySourceUrl').value;if(!code||!url)return;try{const response=await gsFetch('api.php?resource=rateSourcePreview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,url})});const p=await response.json();if(p.ok){document.getElementById('currencyReferenceBuy').value=p.buy;document.getElementById('currencyReferenceSell').value=p.sell;document.getElementById('currencySourceUpdated').value=p.source_updated_at||'—';document.getElementById('currencyFetchedAt').value=fmtRateDate(p.fetched_at);if(p.fallback){setCurrencySourceStatus('offline','OFFLINE · kurs terakhir online tetap dipakai'+(p.last_online_at?' · '+fmtRateDate(p.last_online_at):''));}else{setCurrencySourceStatus('online','ONLINE · sumber berhasil dibaca');}updateCurrencyFinalRates();}else{setCurrencySourceStatus('offline','OFFLINE · belum ada kurs online tersimpan untuk valuta ini');}}catch(e){setCurrencySourceStatus('offline','OFFLINE · kurs terakhir online tetap dipakai');}}
-  function openCurrencyModal(){currencyForm.reset();renderCurrencyOptions();document.getElementById('currencyFlag').textContent='🌐';document.getElementById('currencyPreviewCode').textContent='—';document.getElementById('currencyPreviewName').textContent='Pilih kode ISO 4217';document.getElementById('currencySourceUrl').value='https://www.smartdeal.co.id/';document.getElementById('currencySourceStatus').className='rate-source-status';document.getElementById('currencySourceStatus').innerHTML='<span>●</span> Menunggu kode valuta';document.getElementById('currencySourceUpdated').value='—';document.getElementById('currencyFetchedAt').value='—';document.getElementById('currencyEffective').value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);currencySearch.value='';currencyCode.focus();currencyCode.selectedIndex=0;document.getElementById('currencyModal').classList.add('open');if(currencyPreviewTimer)clearInterval(currencyPreviewTimer);currencyPreviewTimer=setInterval(refreshCurrencySourcePreview,10000);}
+  function openCurrencyModal(){currencyForm.reset();renderCurrencyOptions();document.getElementById('currencyFlag').textContent='🌐';document.getElementById('currencyPreviewCode').textContent='—';document.getElementById('currencyPreviewName').textContent='Pilih kode ISO 4217';document.getElementById('currencySourceUrl').value='https://www.smartdeal.co.id/';document.getElementById('currencySourceStatus').className='rate-source-status';document.getElementById('currencySourceStatus').innerHTML='<span>●</span> Menunggu kode valuta';document.getElementById('currencySourceUpdated').value='—';document.getElementById('currencyFetchedAt').value='—';document.getElementById('currencyEffective').value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);currencySearch.value='';currencyCode.selectedIndex=0;currencySearch.focus();document.getElementById('currencyModal').classList.add('open');if(currencyPreviewTimer)clearInterval(currencyPreviewTimer);currencyPreviewTimer=setInterval(refreshCurrencySourcePreview,10000);}
   document.getElementById('addWorkItem').addEventListener('click',openCurrencyModal);
   document.getElementById('closeCurrencyModal').addEventListener('click',()=>{if(currencyPreviewTimer)clearInterval(currencyPreviewTimer);document.getElementById('currencyModal').classList.remove('open')});
   document.getElementById('cancelCurrency').addEventListener('click',()=>{if(currencyPreviewTimer)clearInterval(currencyPreviewTimer);document.getElementById('currencyModal').classList.remove('open')});
   document.getElementById('currencyModal').addEventListener('click',e=>{if(e.target.id==='currencyModal'){if(currencyPreviewTimer)clearInterval(currencyPreviewTimer);e.target.classList.remove('open')}});
   currencyCode.addEventListener('change',updateCurrencyPreview);
+  currencySearch.addEventListener('input',()=>renderCurrencyOptions(currencySearch.value));
+  currencySearch.addEventListener('focus',()=>{if(currencySearch.value.trim())renderCurrencyOptions(currencySearch.value);});
+  currencySearch.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){
+      const box=document.getElementById('currencySearchResults');
+      if(box){box.className='currency-search-results';box.innerHTML='';}
+      return;
+    }
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const first=document.querySelector('#currencySearchResults [data-code]');
+      if(first)first.click();
+    }
+  });
   currencyForm.addEventListener('submit',async e=>{
   e.preventDefault();
   const data=Object.fromEntries(new FormData(currencyForm).entries());
@@ -698,19 +712,20 @@ function renderWork(items,query=''){
   button.textContent='Mengirim…';
 
   if(currencyPreviewTimer)clearInterval(currencyPreviewTimer);
-  // Tutup form segera setelah request dikirim supaya user tidak terjebak
-  // pada modal yang menunggu proses SmartDeal/Google Sheets.
-  document.getElementById('currencyModal').classList.remove('open');
   showToast('⏳ '+data.code+' sedang disimpan…');
 
   try{
     const response=await gsFetch('api.php?resource=currencyMaster',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     const payload=await response.json();
     if(!response.ok||payload.ok===false)throw new Error(payload.error||'Gagal menyimpan mata uang');
+    document.getElementById('currencyModal').classList.remove('open');
     showToast('✓ '+data.code+' '+data.name+' berhasil disimpan');
+    currencyWorkLoaded=false;
     await loadWork();
   }catch(error){
-    showToast('✕ '+data.code+' gagal disimpan: '+error.message,true);
+    const message=error&&error.message?error.message:String(error);
+    showToast('✕ '+data.code+' gagal disimpan: '+message,true);
+    setCurrencySourceStatus('offline','GAGAL SIMPAN · '+message);
   }finally{
     button.disabled=false;
     button.textContent='Simpan Mata Uang';
