@@ -135,13 +135,13 @@
     <section class="stats"><div class="stat"><label>Transaksi Hari Ini</label><strong>24</strong><span class="up">↑ 12.5%</span></div><div class="stat"><label>Volume Setara IDR</label><strong>842.6 jt</strong><span class="up">↑ 8.1%</span></div><div class="stat"><label>Kas IDR Saat Ini</label><strong>1.248 jt</strong></div><div class="stat warn"><label>Menunggu Tindakan</label><strong>03</strong><span class="up" style="color:#9a7428">perlu verifikasi</span></div></section>
     <section class="workspace">
       <div class="card">
-        <div class="card-head"><div><h2>Transaksi Aktif</h2><span class="caption">Multi-nasabah · setiap transaksi terisolasi</span></div><span class="caption">⌘ + 1 — 5 untuk berpindah</span></div>
-        <div class="transaction-tabs" id="tabs"><div class="tab active"><b>01 · Budi Santoso</b><span>TRX-260818-0125</span> <i>● HITUNG</i></div><div class="tab"><b>02 · Andi Pratama</b><span>TRX-260818-0126</span> <i>● INPUT</i></div><div class="tab"><b>03 · Siti Aminah</b><span>TRX-260818-0127</span> <i>● KYC</i></div><div class="tab"><b>04 · Rudi Hartono</b><span>TRX-260818-0128</span> <i>● BAYAR</i></div></div>
+        <div class="card-head"><div><h2>Transaksi Aktif</h2><span class="caption">Multi-tab · setiap transaksi terisolasi · maksimal 5 tab</span></div><button class="btn primary" type="button" id="newTransactionTab">+ Transaksi</button></div>
+        <div class="transaction-tabs" id="tabs"></div>
         <div class="transaction-body">
-          <div class="form-grid"><div class="field"><label>Nasabah</label><input value="Budi Santoso · 3201•••••821" /></div><div class="field"><label>Tipe Transaksi</label><select><option>Jual Valuta Asing</option><option>Beli Valuta Asing</option></select></div><div class="field"><label>Status KYC</label><input value="✓ Terverifikasi" style="color:#1d6c5d" /></div><div class="field"><label>Rate Lock</label><input value="10:39:12 · Aktif" /></div></div>
-          <div class="ledger-wrap"><table class="ledger"><thead><tr><th>Valuta</th><th>Sisi</th><th>Nominal Valas</th><th>Kurs</th><th>Subtotal IDR</th><th>Stok</th><th></th></tr></thead><tbody id="cartBody"><tr><td class="currency">USD</td><td class="side-sell">JUAL</td><td>1,500.00</td><td class="rate">16,425.00</td><td>24,637,500</td><td>✓ 18,400.00</td><td class="remove">×</td></tr><tr><td class="currency">SGD</td><td class="side-sell">JUAL</td><td>500.00</td><td class="rate">12,180.00</td><td>6,090,000</td><td>✓ 8,250.00</td><td class="remove">×</td></tr></tbody></table><div class="add-row" id="addRow">＋ Tambahkan valuta ke keranjang</div></div>
+          <div class="form-grid"><div class="field"><label>Nasabah</label><input id="tellerCustomer" placeholder="Pilih / ketik nama nasabah" value="" /></div><div class="field"><label>Tipe Transaksi</label><select><option>Jual Valuta Asing</option><option>Beli Valuta Asing</option></select></div><div class="field"><label>Status KYC</label><input id="tellerKyc" placeholder="Belum diverifikasi" value="Belum diverifikasi" style="color:#69736f" /></div><div class="field"><label>Rate Lock</label><input id="tellerRateLock" placeholder="Belum dikunci" value="Belum dikunci" /></div></div>
+          <div class="ledger-wrap"><table class="ledger"><thead><tr><th>Valuta</th><th>Sisi</th><th>Nominal Valas</th><th>Kurs</th><th>Subtotal IDR</th><th>Stok</th><th></th></tr></thead><tbody id="cartBody"></tbody></table><div class="add-row" id="addRow">＋ Tambahkan valuta ke keranjang</div></div>
           <div class="settlement"><div class="payment-box"><h3>Metode Pembayaran</h3><div class="radios"><label><input type="radio" name="pay" checked> Tunai</label><label><input type="radio" name="pay"> Transfer</label><label><input type="radio" name="pay"> Split pembayaran</label></div><button class="mini-btn">+ Tambah alokasi pembayaran</button></div><div class="total"><label>Total yang harus dibayar</label><strong>Rp 30,727,500</strong><small>2 item · kurs terkunci</small></div></div>
-          <div class="bottom-actions"><span class="trust">✓ <b>Threshold aman</b> · Tidak ada indikasi risiko AML</span><div><button class="btn" id="holdTransaction">Simpan / Hold</button> <button class="btn primary">Lanjut ke Pembayaran →</button></div></div>
+          <div class="bottom-actions"><span class="trust">✓ <b>Threshold aman</b> · Tidak ada indikasi risiko AML</span><div><button class="btn" id="holdTransaction">Simpan / Hold</button> <button class="btn primary" type="button" id="submitTransaction">Submit Transaksi →</button></div></div>
         </div>
       </div>
       <aside class="right-col">
@@ -710,6 +710,66 @@ function renderWork(items,query=''){
     button.textContent='Simpan Mata Uang';
   }
 });
+  // Teller Workspace: multi-tab cart, draft/hold, dan invoice hanya saat Submit.
+  (function(){
+    const MAX_TABS=5, tabsEl=document.getElementById('tabs'), customerEl=document.getElementById('tellerCustomer'), kycEl=document.getElementById('tellerKyc'), lockEl=document.getElementById('tellerRateLock'), bodyEl=document.getElementById('cartBody');
+    if(!tabsEl||!customerEl||!bodyEl)return;
+    let tellerTabs=[],activeTabId=null;
+
+    function newTab(){
+      if(tellerTabs.length>=MAX_TABS){showToast('Maksimal 5 transaksi aktif.',true);return}
+      const id='tab_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+      const tab={id,cartId:'',cartNo:'',customer:'',customer_id:'',type:'JUAL',kyc:'Belum diverifikasi',rateLock:'Belum dikunci',items:[],status:'DRAFT',invoice:'',dirty:false};
+      tellerTabs.push(tab);activeTabId=id;renderTabs();renderActive();persistTab(tab,false);
+    }
+    function activeTab(){return tellerTabs.find(x=>x.id===activeTabId)||null}
+    function snapshotForm(){
+      const t=activeTab();if(!t)return;
+      t.customer=customerEl.value.trim();
+      t.type=(document.querySelector('#page-teller select')?.value||'Jual Valuta Asing');
+      t.kyc=kycEl.value||'Belum diverifikasi';t.rateLock=lockEl.value||'Belum dikunci';
+      t.dirty=true;
+    }
+    function renderTabs(){
+      tabsEl.innerHTML=tellerTabs.map((t,i)=>'<div class="tab '+(t.id===activeTabId?'active':'')+'" data-tab-id="'+t.id+'"><b>'+(i+1).toString().padStart(2,'0')+' · '+(t.customer||'Transaksi Baru')+'</b><span>'+(t.invoice||t.cartNo||'Draft')+'</span><i>● '+(t.status==='HOLD'?'HOLD':t.status==='SUBMITTED'?'SUBMIT':'DRAFT')+'</i><button type="button" class="tab-close" data-close-tab="'+t.id+'" aria-label="Tutup">×</button></div>').join('');
+      tabsEl.querySelectorAll('[data-tab-id]').forEach(el=>el.addEventListener('click',e=>{if(e.target.closest('[data-close-tab]'))return;snapshotForm();activeTabId=el.dataset.tabId;renderTabs();renderActive()}));
+      tabsEl.querySelectorAll('[data-close-tab]').forEach(el=>el.addEventListener('click',async e=>{e.stopPropagation();await closeTab(el.dataset.closeTab)}));
+    }
+    function renderActive(){
+      const t=activeTab();if(!t){newTab();return}
+      customerEl.value=t.customer||'';kycEl.value=t.kyc||'Belum diverifikasi';lockEl.value=t.rateLock||'Belum dikunci';
+      const sel=document.querySelector('#page-teller select');if(sel)sel.value=t.type==='BELI'?'Beli Valuta Asing':'Jual Valuta Asing';
+      bodyEl.innerHTML=t.items.length?t.items.map((x,i)=>'<tr><td class="currency">'+x.currency_id+'</td><td class="side-sell">'+x.side+'</td><td>'+Number(x.qty).toLocaleString('id-ID')+'</td><td class="rate">'+Number(x.rate).toLocaleString('id-ID')+'</td><td>'+Number(x.amount).toLocaleString('id-ID')+'</td><td>—</td><td class="remove"><button type="button" data-remove-item="'+i+'">×</button></td></tr>').join(''):'<tr><td colspan="7" style="text-align:center;color:#69736f;padding:16px">Keranjang kosong. Tambahkan valuta ke transaksi.</td></tr>';
+      bodyEl.querySelectorAll('[data-remove-item]').forEach(b=>b.addEventListener('click',()=>{t.items.splice(Number(b.dataset.removeItem),1);t.dirty=true;renderActive()}));
+      renderTotals(t);
+    }
+    function renderTotals(t){const total=t.items.reduce((s,x)=>s+Number(x.amount||0),0);const totalEl=document.querySelector('#page-teller .total strong');if(totalEl)totalEl.textContent='Rp '+Math.round(total).toLocaleString('id-ID');const small=document.querySelector('#page-teller .total small');if(small)small.textContent=t.items.length+' item · '+(t.rateLock&&t.rateLock!=='Belum dikunci'?'kurs terkunci':'kurs belum dikunci')}
+    async function persistTab(t,notify=true){
+      try{
+        const res=await gsFetch('api.php?resource=transactionCarts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:t.cartId||'',cart_no:t.cartNo||'',customer_id:t.customer_id||'',status:t.status||'DRAFT',items:t.items})});
+        const p=await res.json();if(!res.ok||p.ok===false)throw new Error(p.error||'Gagal menyimpan Draft');
+        const cart=p.data&&p.data.cart||{};t.cartId=cart.id||t.cartId;t.cartNo=cart.cart_no||t.cartNo;t.dirty=false;renderTabs();if(notify)showToast('✓ '+(t.status==='HOLD'?'Transaksi di-Hold':'Draft tersimpan')+' · '+t.cartNo);
+      }catch(e){showToast('✕ '+e.message,true)}
+    }
+    async function closeTab(id){
+      const t=tellerTabs.find(x=>x.id===id);if(!t)return;
+      snapshotForm();
+      if(t.dirty||t.items.length||t.customer){
+        const save=confirm((t.customer||'Transaksi ini')+' masih memiliki data.\n\nOK = Simpan sebagai Hold\nCancel = Tutup tanpa menyimpan');
+        if(save){t.status='HOLD';await persistTab(t,true)}else if(t.cartId){/* jangan ubah transaksi server; hanya tutup workspace */}
+      }
+      tellerTabs=tellerTabs.filter(x=>x.id!==id);if(activeTabId===id)activeTabId=tellerTabs[tellerTabs.length-1]?.id||null;
+      if(!tellerTabs.length)newTab();else{renderTabs();renderActive()}
+    }
+    document.getElementById('newTransactionTab')?.addEventListener('click',newTab);
+    document.getElementById('newTransaction')?.addEventListener('click',newTab);
+    document.getElementById('holdTransaction')?.addEventListener('click',async()=>{const t=activeTab();if(!t)return;snapshotForm();t.status='HOLD';await persistTab(t,true)});
+    document.getElementById('addRow')?.addEventListener('click',()=>{const t=activeTab();if(!t)return;const currency=(prompt('Kode valuta (contoh USD):','USD')||'').trim().toUpperCase();if(!currency)return;const qty=Number(prompt('Nominal valuta:','100')||0);const rate=Number(prompt('Kurs:','16425')||0);if(!qty||!rate){showToast('Nominal dan kurs harus diisi.',true);return}t.items.push({currency_id:currency,side:t.type==='BELI'?'BELI':'JUAL',denomination:'',qty,rate,amount:qty*rate,rate_snapshot_id:''});t.rateLock=new Date().toLocaleTimeString('id-ID');t.dirty=true;renderActive()});
+    document.getElementById('submitTransaction')?.addEventListener('click',async()=>{const t=activeTab();if(!t)return;snapshotForm();if(!t.customer){showToast('Nasabah wajib dipilih sebelum Submit.',true);return}if(!t.items.length){showToast('Tambahkan minimal 1 item valuta.',true);return}const btn=document.getElementById('submitTransaction');btn.disabled=true;btn.textContent='Submitting…';try{const res=await gsFetch('api.php?resource=transactionSubmit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cart_id:t.cartId,customer:t.customer,customer_id:t.customer_id,items:t.items,final_status:'SUBMITTED'})});const p=await res.json();if(!res.ok||p.ok===false)throw new Error(p.error||'Submit gagal');t.invoice=p.data.transaction.trx_no;t.status='SUBMITTED';showToast('✓ '+t.invoice+' berhasil dibuat');tellerTabs=tellerTabs.filter(x=>x.id!==t.id);activeTabId=tellerTabs[tellerTabs.length-1]?.id||null;if(!tellerTabs.length)newTab();else{renderTabs();renderActive()}}catch(e){showToast('✕ '+e.message,true)}finally{btn.disabled=false;btn.textContent='Submit Transaksi →'}});
+    customerEl.addEventListener('input',()=>{const t=activeTab();if(t){t.customer=customerEl.value;t.dirty=true;renderTabs()}});
+    if(!tellerTabs.length)newTab();else renderActive();
+  })();
+
   // Dashboard: kontrol periode grafik Riwayat Kurs.
   (function(){
     const labels={
