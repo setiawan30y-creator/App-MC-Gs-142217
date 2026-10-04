@@ -134,7 +134,7 @@
   </script>
   <main>
     <header class="topbar"><div class="crumb">Operasional &nbsp;/&nbsp; <b>Teller Workspace</b></div><div class="top-right"><span class="date">SEL, 18 AGU 2026 · 10:42 WIB</span><span class="online">Sistem normal</span><button class="iconbtn">♧</button></div></header>
-    <div class="page active" id="page-teller"><section class="headline"><div><h1>Ruang Teller</h1><p>Transaksi cepat, presisi, dan tercatat dengan sempurna.</p></div><div class="actions"><button class="btn">⌘  Cari Nasabah</button><button class="btn gold">▣ KYC Scan</button><button class="btn primary" id="newTransaction">+ Transaksi Baru</button></div></section>
+    <div class="page" id="page-teller"><section class="headline"><div><h1>Ruang Teller</h1><p>Transaksi cepat, presisi, dan tercatat dengan sempurna.</p></div><div class="actions"><button class="btn">⌘  Cari Nasabah</button><button class="btn gold">▣ KYC Scan</button><button class="btn primary" id="newTransaction">+ Transaksi Baru</button></div></section>
     <section class="stats"><div class="stat"><label>Transaksi Hari Ini</label><strong>24</strong><span class="up">↑ 12.5%</span></div><div class="stat"><label>Volume Setara IDR</label><strong>842.6 jt</strong><span class="up">↑ 8.1%</span></div><div class="stat"><label>Kas IDR Saat Ini</label><strong>1.248 jt</strong></div><div class="stat warn"><label>Menunggu Tindakan</label><strong>03</strong><span class="up" style="color:#9a7428">perlu verifikasi</span></div></section>
     <section class="workspace">
       <div class="card">
@@ -572,7 +572,12 @@ function renderWork(items,query=''){
   currencyCode.addEventListener('change',updateCurrencyPreview);
   currencyForm.addEventListener('submit',async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(currencyForm).entries());if(!data.code){showToast('Pilih kode ISO 4217.',true);return}data.reference_buy=Number(data.reference_buy||0);data.reference_sell=Number(data.reference_sell||0);data.buy_spread=Number(data.buy_spread||0);data.sell_spread=Number(data.sell_spread||0);data.buy=Number(data.buy||0);data.sell=Number(data.sell||0);const button=document.getElementById('saveCurrencyForm');button.disabled=true;button.textContent='Menyimpan…';try{const response=await gsFetch('api.php?resource=currencyMaster',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const payload=await response.json();if(!response.ok||payload.ok===false)throw new Error(payload.error||'Gagal menyimpan mata uang');if(currencyPreviewTimer)clearInterval(currencyPreviewTimer);document.getElementById('currencyModal').classList.remove('open');showToast('✓ '+data.code+' '+data.name+' berhasil ditambahkan');loadWork()}catch(error){showToast(error.message,true)}finally{button.disabled=false;button.textContent='Simpan Mata Uang'}});
   renderCenters();
-  const initialPage=location.hash.replace('#','');
-  if(initialPage&&pageNames[initialPage]){document.querySelectorAll('[data-page]').forEach(link=>link.classList.toggle('active',link.dataset.page===initialPage));showPage(initialPage)}
+  const initialPage=location.hash.replace('#','')||'dashboard';
+  if(pageNames[initialPage]){
+    document.querySelectorAll('[data-page]').forEach(link=>{
+      link.classList.toggle('active',link.dataset.page===initialPage&&!link.dataset.centerTarget);
+    });
+    showPage(initialPage);
+  }
 </script>
 </body></html>
