@@ -664,10 +664,25 @@ function renderWork(items,query=''){
   };
   box.querySelectorAll('[data-code]').forEach(btn=>btn.addEventListener('click',()=>choose(btn.dataset.code)));
 
-  // Jika kode ISO diketik lengkap, langsung pilih. Jika belum lengkap, pilih kandidat pertama.
+  // Kode ISO yang lengkap langsung dipilih.
+  // Untuk pencarian parsial, tampilkan kandidat saja; jangan mengganti pilihan
+  // sampai user memilih hasilnya.
   const exact=list.find(x=>x.code.toLowerCase()===q);
-  currencyCode.value=(exact||list[0]).code;
-  updateCurrencyPreview();
+  if(exact){
+    currencyCode.value=exact.code;
+    updateCurrencyPreview();
+  }else{
+    currencyCode.value='';
+    document.getElementById('currencyNumericCode').value='';
+    document.getElementById('currencyName').value='';
+    document.getElementById('currencyCountry').value='';
+    document.getElementById('currencyCountryCode').value='';
+    document.getElementById('currencyFlagValue').value='';
+    document.getElementById('currencyFlag').textContent='🌐';
+    document.getElementById('currencyPreviewCode').textContent='—';
+    document.getElementById('currencyPreviewName').textContent='Pilih hasil pencarian';
+    setCurrencySourceStatus('','Menunggu pilihan valuta');
+  }
 }
 
   function updateCurrencyPreview(){const o=currencyCode.options[currencyCode.selectedIndex];if(!o||!o.value)return;document.getElementById('currencyNumericCode').value=o.dataset.numeric||'';document.getElementById('currencyName').value=o.dataset.name||'';document.getElementById('currencyCountry').value=o.dataset.country||'';document.getElementById('currencyCountryCode').value=o.dataset.countryCode||'';document.getElementById('currencyFlagValue').value=o.dataset.flag||'';document.getElementById('currencyFlag').textContent=o.dataset.flag||'🌐';document.getElementById('currencyPreviewCode').textContent=o.value;document.getElementById('currencyPreviewName').textContent=(o.dataset.name||'')+' · '+(o.dataset.country||'');refreshCurrencySourcePreview();}
