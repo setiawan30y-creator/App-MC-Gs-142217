@@ -171,7 +171,14 @@ function saveCurrencyMaster(p){
     approved_by:'SYSTEM',
     approved_at:now,
     published_at:now,
-    effective_at:p.effective_at?new Date(p.effective_at):(previousRate?.effective_at||new Date())
+    // google.script.run tidak boleh mengembalikan objek Date.
+    // Simpan dan kembalikan sebagai string ISO agar response POST dapat
+    // diserialisasi tanpa error internal pada Web App.
+    effective_at:p.effective_at
+      ? new Date(p.effective_at).toISOString()
+      : (previousRate && previousRate.effective_at
+          ? new Date(previousRate.effective_at).toISOString()
+          : now)
   };
 
   const rsh=getSS_().getSheetByName('31_rates');
@@ -186,8 +193,9 @@ function saveCurrencyMaster(p){
     rsh.appendRow(rh.map(h=>Object.prototype.hasOwnProperty.call(rate,h)?rate[h]:''));
   }
 
-  audit_(existing?'UPDATE':'CREATE','CURRENCY',id,existing?{currency:existing,rate:previousRate}:null,{currency,rate});
-  return {ok:true,action:existing?'updated':'created',currency,rate};
+  audit_(existing?'UPDATE':'CREATE',id,existing?{currency:existing,rate:previousRate}:null,{currency,rate});
+  // Pastikan seluruh response berupa tipe yang aman untuk google.script.run.
+  return {ok:true,action:existing?'updated':'created',currency:Object.assign({},currency),rate:Object.assign({},rate)};
 }
 function getCollectionWork(name){
   if(name==='currencies') return getCurrencyRateWork_();
